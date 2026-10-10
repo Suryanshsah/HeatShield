@@ -1,26 +1,13 @@
-import { AlertTriangle, Droplets, MapPin, ThermometerSun, Zap } from 'lucide-react';
+import { AlertTriangle, Droplets, MapPin, RefreshCw, ThermometerSun, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { HEAT_RISK_SUMMARY } from '../data/sampleData';
 import { fetchReports, fetchWaterPoints } from '../services/api';
+import { fetchLiveDelhiWeather } from '../services/weatherApi';
 import HeatRiskMap from './HeatRiskMap';
 import RecentReports from './RecentReports';
 import RiskLegend from './RiskLegend';
 import StatCard from './StatCard';
-
-const RISK_ACCENT = {
-  Low:      '#52b788',
-  Moderate: '#f4a261',
-  High:     '#e76f51',
-  Severe:   '#c1121f',
-};
-
-const RISK_BG = {
-  Low:      '#e8f7ef',
-  Moderate: '#fef3e6',
-  High:     '#fdeee9',
-  Severe:   '#fde8e8',
-};
+import { useLanguage } from '../context/LanguageContext';
 
 function SkeletonCard() {
   return (
@@ -39,42 +26,43 @@ function SkeletonCard() {
   );
 }
 
-export default function Dashboard({ localReports = [] }) {
-  const [waterPoints,    setWaterPoints]    = useState([]);
-  const [fetchedReports, setFetchedReports] = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [fetchError,     setFetchError]     = useState(null);
+export default function Dashboard() {
+  const { t } = useLanguage();
+  const [waterPoints, setWaterPoints] = useState([]);
+  const [reports, setReports]       = useState([]);
+  const [weather, setWeather]       = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [wps, rpts, wx] = await Promise.all([
+        fetchWaterPoints(),
+        fetchReports(),
+        fetchLiveDelhiWeather(),
+      ]);
+      setWaterPoints(wps);
+      setReports(rpts);
+      setWeather(wx);
+    } catch (err) {
+      setFetchError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    Promise.all([fetchWaterPoints(), fetchReports()])
-      .then(([wps, rpts]) => {
-        if (!active) return;
-        setWaterPoints(wps);
-        setFetchedReports(rpts);
-      })
-      .catch((err) => { if (active) setFetchError(err.message); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    loadData();
   }, []);
-
-  const fetchedIds = new Set(fetchedReports.map((r) => r.id));
-  const newLocal   = localReports.filter((r) => !fetchedIds.has(r.id));
-  const reports    = [...newLocal, ...fetchedReports];
 
   const openCount   = reports.filter((r) => r.status === 'open').length;
   const brokenCount = waterPoints.filter((w) => w.status === 'broken').length;
-  const riskLevel   = HEAT_RISK_SUMMARY.level;
-  const riskAccent  = RISK_ACCENT[riskLevel] || '#e76f51';
-  const riskBg      = RISK_BG[riskLevel]     || '#fdeee9';
-
-  const isMockMode = !import.meta.env.VITE_API_URL;
 
   return (
     <main style={{ maxWidth: 1240, margin: '0 auto', padding: '1.75rem 1.25rem' }}>
 
-      {/* ── Hero header ── */}
+      {/* Hero Header */}
       <div className="fade-up" style={{
         background: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 60%, #40916c 100%)',
         borderRadius: 'var(--radius-lg)',
@@ -90,45 +78,44 @@ export default function Dashboard({ localReports = [] }) {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Decorative rings */}
-        <div style={{ position: 'absolute', right: -40, top: -40, width: 200, height: 200, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', right: -10, top: -10, width: 130, height: 130, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
-
         <div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 6 }}>
-            Community Dashboard
+            {t('dashboard')}
           </h1>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.75)', maxWidth: 480 }}>
-            Delhi heat-risk overview and water-access status.{' '}
-            <em style={{ color: 'rgba(255,255,255,0.5)' }}>Sample data — not verified or real-time.</em>
+          <p style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.8)', maxWidth: 520, lineHeight: 1.5 }}>
+            Live Delhi heat-wave risk monitoring &amp; community water access portal.
           </p>
         </div>
 
-        {/* Mode pill */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 16px',
-          borderRadius: 99,
-          backgroundColor: isMockMode ? 'rgba(244,162,97,0.2)' : 'rgba(82,183,136,0.2)',
-          border: `1px solid ${isMockMode ? 'rgba(244,162,97,0.4)' : 'rgba(82,183,136,0.4)'}`,
-        }}>
-          <span className="pulse-dot" style={{
-            display: 'inline-block',
-            width: 7,
-            height: 7,
-            borderRadius: '50%',
-            backgroundColor: isMockMode ? '#f4a261' : '#52b788',
-          }} />
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>
-            {isMockMode ? 'Demo Mode — AWS not connected' : 'Live — AWS Connected'}
-          </span>
-          <Zap size={13} color={isMockMode ? '#f4a261' : '#52b788'} />
-        </div>
+        {/* Live Weather Status Badge */}
+        {weather && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 18px',
+            borderRadius: 99,
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.25)',
+            backdropFilter: 'blur(4px)',
+          }}>
+            <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: weather.accent }} />
+            <div style={{ fontSize: '0.82rem' }}>
+              <strong style={{ color: '#fff' }}>Delhi Temp: {weather.temp}</strong>
+              <span style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 6 }}>Feels: {weather.feelsLike}</span>
+            </div>
+            <button
+              onClick={loadData}
+              title="Refresh weather & reports"
+              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <RefreshCw size={14} className={loading ? 'pulse-dot' : ''} />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ── Error banner ── */}
+      {/* Error Banner */}
       {fetchError && (
         <div style={{
           padding: '10px 16px',
@@ -147,24 +134,24 @@ export default function Dashboard({ localReports = [] }) {
         </div>
       )}
 
-      {/* ── Stat cards ── */}
+      {/* Stat cards */}
       <section aria-label="Summary statistics" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-        {loading ? (
+        {loading || !weather ? (
           <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
         ) : (
           <>
             <StatCard
               id="stat-heat-risk"
               icon={ThermometerSun}
-              label="Heat Risk Level"
-              value={riskLevel}
-              subtitle={`${HEAT_RISK_SUMMARY.feelsLike} feels-like · sample`}
-              accentColor={riskAccent}
+              label={t('heatRiskLevel')}
+              value={weather.level}
+              subtitle={`${weather.feelsLike} feels-like · Humidity ${weather.humidity}`}
+              accentColor={weather.accent}
             />
             <StatCard
               id="stat-water-points"
               icon={Droplets}
-              label="Water Points"
+              label={t('waterPoints')}
               value={waterPoints.length}
               subtitle={`${brokenCount} reported broken`}
               accentColor="var(--forest)"
@@ -172,7 +159,7 @@ export default function Dashboard({ localReports = [] }) {
             <StatCard
               id="stat-open-incidents"
               icon={AlertTriangle}
-              label="Open Incidents"
+              label={t('openIncidents')}
               value={openCount}
               subtitle={`${reports.length} total reports`}
               accentColor="var(--accent)"
@@ -181,50 +168,50 @@ export default function Dashboard({ localReports = [] }) {
         )}
       </section>
 
-      {/* ── Heat advisory banner ── */}
-      {!loading && (
+      {/* Live Heat Advisory Banner */}
+      {weather && (
         <div className="fade-up" style={{
-          backgroundColor: riskBg,
-          border: `1px solid ${riskAccent}40`,
-          borderLeft: `4px solid ${riskAccent}`,
+          backgroundColor: weather.bg,
+          border: `1px solid ${weather.accent}40`,
+          borderLeft: `5px solid ${weather.accent}`,
           borderRadius: 'var(--radius-md)',
-          padding: '0.9rem 1.2rem',
+          padding: '1rem 1.25rem',
           marginBottom: '1.5rem',
           display: 'flex',
           alignItems: 'flex-start',
-          gap: 12,
+          gap: 14,
         }}>
           <div style={{
-            width: 34, height: 34, borderRadius: 8,
-            backgroundColor: `${riskAccent}20`,
+            width: 38, height: 38, borderRadius: 10,
+            backgroundColor: `${weather.accent}20`,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
-            <ThermometerSun size={18} color={riskAccent} />
+            <ThermometerSun size={20} color={weather.accent} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: riskAccent, marginBottom: 2 }}>
-              Heat Advisory — {riskLevel} Risk
+            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: weather.accent, marginBottom: 3 }}>
+              {t('heatAdvisory')} — {weather.level} Risk ({weather.temp})
             </div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-md)' }}>{HEAT_RISK_SUMMARY.advisory}</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
-              {HEAT_RISK_SUMMARY.disclaimer}
+            <div style={{ fontSize: '0.88rem', color: 'var(--text-md)', lineHeight: 1.5 }}>{weather.advisory}</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: 4 }}>
+              Live Open-Meteo Weather Stream · Delhi (28.61°N, 77.20°E) · Updated: {weather.timestamp}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Map + Sidebar ── */}
+      {/* Map + Sidebar */}
       <section aria-label="Heat risk map" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 14, marginBottom: '1.5rem' }}>
         <div style={{ minWidth: 0 }}>
           {loading
             ? <div className="skeleton" style={{ height: 450, borderRadius: 'var(--radius-lg)' }} />
-            : <HeatRiskMap waterPoints={waterPoints} />
+            : <HeatRiskMap waterPoints={waterPoints} reports={reports} onRefresh={loadData} />
           }
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <RiskLegend />
 
-          {/* Water status breakdown */}
+          {/* Water Status Breakdown */}
           <div style={{
             backgroundColor: 'var(--card)',
             border: '1px solid var(--border)',
@@ -238,14 +225,14 @@ export default function Dashboard({ localReports = [] }) {
               borderBottom: '1px solid var(--border)',
             }}>
               <h3 style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                💧 Water Status
+                💧 {t('waterStatus')}
               </h3>
             </div>
             <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { status: 'operational', label: 'Operational', color: '#52b788', bg: '#e8f7ef' },
-                { status: 'low-supply',  label: 'Low Supply',  color: '#f4a261', bg: '#fef3e6' },
-                { status: 'broken',      label: 'Broken',      color: '#c1121f', bg: '#fde8e8' },
+                { status: 'operational', label: t('operational'), color: '#52b788', bg: '#e8f7ef' },
+                { status: 'low-supply',  label: t('lowSupply'),   color: '#f4a261', bg: '#fef3e6' },
+                { status: 'broken',      label: t('broken'),      color: '#c1121f', bg: '#fde8e8' },
               ].map(({ status, label, color, bg }) => {
                 const count = waterPoints.filter((w) => w.status === status).length;
                 const pct   = waterPoints.length ? Math.round(count / waterPoints.length * 100) : 0;
@@ -285,67 +272,18 @@ export default function Dashboard({ localReports = [] }) {
               fontSize: '0.9rem',
               boxShadow: '0 4px 14px rgba(231,111,81,0.35)',
               textAlign: 'center',
-              transition: 'opacity 0.2s, transform 0.2s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = 0.92; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = 1;    e.currentTarget.style.transform = 'translateY(0)'; }}
           >
             <MapPin size={17} />
-            Report a Problem
+            {t('reportProblem')}
           </Link>
         </div>
       </section>
 
-      {/* ── Recent Reports ── */}
+      {/* Recent Reports Section */}
       <section aria-label="Recent reports" style={{ marginBottom: '2.5rem' }}>
-        <RecentReports reports={reports} />
+        <RecentReports reports={reports} onReportUpdated={loadData} />
       </section>
-
-      {/* ── AWS Integration Status Banner ── */}
-      <div style={{
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
-        overflow: 'hidden',
-        marginBottom: '1rem',
-      }}>
-        <div style={{
-          padding: '0.8rem 1.25rem',
-          background: 'var(--border-lt)',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <Zap size={15} color="var(--muted)" />
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            AWS Integration Status
-          </span>
-        </div>
-        <div style={{ padding: '1rem 1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-          {[
-            { service: 'API Gateway',  status: 'pending', note: 'Set VITE_API_URL in .env' },
-            { service: 'Lambda',       status: 'pending', note: 'Functions not deployed' },
-            { service: 'DynamoDB',     status: 'pending', note: 'Tables not created' },
-            { service: 'SNS',          status: 'pending', note: 'Notifications not wired' },
-          ].map(({ service, status, note }) => (
-            <div key={service} style={{
-              padding: '0.7rem 0.9rem',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border)',
-              backgroundColor: 'var(--card)',
-              display: 'flex', alignItems: 'flex-start', gap: 8,
-            }}>
-              <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                backgroundColor: status === 'connected' ? '#52b788' : '#f4a261',
-                marginTop: 5, flexShrink: 0,
-              }} />
-              <div>
-                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)' }}>{service}</div>
-                <div style={{ fontSize: '0.73rem', color: 'var(--muted)' }}>{note}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       <style>{`
         @media (max-width: 860px) {

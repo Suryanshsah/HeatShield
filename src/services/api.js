@@ -1,98 +1,199 @@
 /**
- * api.js — HeatShield API service
- *
- * Reads VITE_API_URL from the environment.
- * When the variable is absent the functions return mock data so the UI
- * works locally without any AWS infrastructure.
- *
- * DO NOT hardcode credentials or AWS secrets here.
+ * api.js — Persisted Data & GIS Service
+ * Uses browser localStorage for data persistence across reloads.
+ * Connects to OpenStreetMap Nominatim API for free reverse geocoding.
  */
 
 import { SAMPLE_REPORTS, SAMPLE_WATER_POINTS } from '../data/sampleData';
 
-const BASE_URL = import.meta.env.VITE_API_URL || null;
+const STORAGE_KEY_REPORTS = 'heatshield_reports_v2';
+const STORAGE_KEY_WATER_POINTS = 'heatshield_water_points_v2';
 
-// Simulate network latency in dev/mock mode
-const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
+const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 
-// ─── Reports ──────────────────────────────────────────────────────────────────
-
-/**
- * Fetch all incident reports.
- * @returns {Promise<Array>}
- */
-export async function fetchReports() {
-  if (!BASE_URL) {
-    await delay();
-    return [...SAMPLE_REPORTS];
+// Helper: Read from localStorage or seed with defaults
+function getStoredReports() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_REPORTS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_REPORTS, JSON.stringify(SAMPLE_REPORTS));
+      return SAMPLE_REPORTS;
+    }
+    return JSON.parse(raw);
+  } catch (err) {
+    return SAMPLE_REPORTS;
   }
-  const res = await fetch(`${BASE_URL}/reports`);
-  if (!res.ok) throw new Error(`Failed to fetch reports: ${res.status}`);
-  return res.json();
 }
 
-// ─── Water Points ─────────────────────────────────────────────────────────────
-
-/**
- * Fetch all water-point locations.
- * @returns {Promise<Array>}
- */
-export async function fetchWaterPoints() {
-  if (!BASE_URL) {
-    await delay();
-    return [...SAMPLE_WATER_POINTS];
+function saveReports(reports) {
+  try {
+    localStorage.setItem(STORAGE_KEY_REPORTS, JSON.stringify(reports));
+  } catch (e) {
+    console.error('Failed to save reports to localStorage:', e);
   }
-  const res = await fetch(`${BASE_URL}/water-points`);
-  if (!res.ok) throw new Error(`Failed to fetch water points: ${res.status}`);
-  return res.json();
 }
 
-// ─── Submit Report ────────────────────────────────────────────────────────────
-
-/**
- * Submit a new incident report.
- * @param {Object} payload
- * @param {string} payload.issueType
- * @param {string} payload.description
- * @param {number} payload.lat
- * @param {number} payload.lng
- * @param {File|null} [payload.photo]
- * @returns {Promise<Object>} The saved report object (or a mock ack)
- */
-export async function submitReport({ issueType, description, lat, lng, photo }) {
-  if (!BASE_URL) {
-    await delay(600);
-    const newReport = {
-      id: `rpt-${Date.now()}`,
-      issueType,
-      description,
-      lat: parseFloat(lat),
-      lng: parseFloat(lng),
-      status: 'open',
-      timestamp: new Date().toISOString(),
-      _mock: true,
-    };
-    return newReport;
+function getStoredWaterPoints() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_WATER_POINTS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_WATER_POINTS, JSON.stringify(SAMPLE_WATER_POINTS));
+      return SAMPLE_WATER_POINTS;
+    }
+    return JSON.parse(raw);
+  } catch (err) {
+    return SAMPLE_WATER_POINTS;
   }
+}
 
-  // Real submission — multipart if photo is attached, JSON otherwise
-  if (photo) {
-    const form = new FormData();
-    form.append('issueType', issueType);
-    form.append('description', description);
-    form.append('lat', lat);
-    form.append('lng', lng);
-    form.append('photo', photo);
-    const res = await fetch(`${BASE_URL}/reports`, { method: 'POST', body: form });
-    if (!res.ok) throw new Error(`Submit failed: ${res.status}`);
-    return res.json();
+function saveWaterPoints(waterPoints) {
+  try {
+    localStorage.setItem(STORAGE_KEY_WATER_POINTS, JSON.stringify(waterPoints));
+  } catch (e) {
+    console.error('Failed to save water points to localStorage:', e);
   }
+}
 
-  const res = await fetch(`${BASE_URL}/reports`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ issueType, description, lat, lng }),
+/** Convert File object to Base64 string */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
   });
-  if (!res.ok) throw new Error(`Submit failed: ${res.status}`);
-  return res.json();
+}
+
+// ─── API Methods ─────────────────────────────────────────────────────────────
+
+export async function fetchReports() {
+  await delay(200);
+  return getStoredReports();
+}
+
+export async function fetchWaterPoints() {
+  await delay(200);
+  return getStoredWaterPoints();
+}
+
+export async function submitReport({ issueType, description, lat, lng, photo, address }) {
+  await delay(400);
+
+  let photoUrl = null;
+  if (photo) {
+    try {
+      photoUrl = await fileToBase64(photo);
+    } catch (e) {
+      console.warn('Could not encode photo:', e);
+    }
+  }
+
+  // Attempt reverse geocoding if address not supplied
+  let finalAddress = address || '';
+  if (!finalAddress && lat && lng) {
+    try {
+      finalAddress = await reverseGeocode(lat, lng);
+    } catch (e) {
+      finalAddress = `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+    }
+  }
+
+  const reports = getStoredReports();
+  const newReport = {
+    id: `rpt-${Date.now()}`,
+    issueType,
+    description,
+    address: finalAddress || 'Delhi Area',
+    lat: parseFloat(lat),
+    lng: parseFloat(lng),
+    photoUrl,
+    status: 'open',
+    upvotes: 1,
+    officialNote: '',
+    timestamp: new Date().toISOString(),
+  };
+
+  const updated = [newReport, ...reports];
+  saveReports(updated);
+  return newReport;
+}
+
+export async function updateReportStatus(id, status, officialNote = '') {
+  await delay(200);
+  const reports = getStoredReports();
+  const updated = reports.map(r => {
+    if (r.id === id) {
+      return {
+        ...r,
+        status,
+        officialNote: officialNote !== undefined ? officialNote : r.officialNote,
+      };
+    }
+    return r;
+  });
+  saveReports(updated);
+  return updated;
+}
+
+export async function upvoteReport(id) {
+  await delay(100);
+  const reports = getStoredReports();
+  const updated = reports.map(r => {
+    if (r.id === id) {
+      return { ...r, upvotes: (r.upvotes || 0) + 1 };
+    }
+    return r;
+  });
+  saveReports(updated);
+  return updated;
+}
+
+export async function deleteReport(id) {
+  await delay(100);
+  const reports = getStoredReports();
+  const updated = reports.filter(r => r.id !== id);
+  saveReports(updated);
+  return updated;
+}
+
+export async function addWaterPoint({ name, type, lat, lng, status, address }) {
+  await delay(200);
+  const points = getStoredWaterPoints();
+  const newPoint = {
+    id: `wp-${Date.now()}`,
+    name,
+    type,
+    lat: parseFloat(lat),
+    lng: parseFloat(lng),
+    status,
+    address: address || 'Delhi',
+  };
+  const updated = [newPoint, ...points];
+  saveWaterPoints(updated);
+  return updated;
+}
+
+export async function updateWaterPointStatus(id, newStatus) {
+  await delay(100);
+  const points = getStoredWaterPoints();
+  const updated = points.map(p => (p.id === id ? { ...p, status: newStatus } : p));
+  saveWaterPoints(updated);
+  return updated;
+}
+
+/** Nominatim OpenStreetMap Free Reverse Geocoding */
+export async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16`);
+    if (!res.ok) return `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+    const data = await res.json();
+    if (data && data.display_name) {
+      const parts = data.display_name.split(',');
+      return parts.slice(0, 3).join(', ');
+    }
+    return `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+  } catch (e) {
+    return `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+  }
 }

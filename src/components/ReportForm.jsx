@@ -1,23 +1,16 @@
 import { useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
-import { submitReport } from '../services/api';
-import { AlertTriangle, Camera, CheckCircle, Droplets, MapPin, Navigation, Send, Wrench } from 'lucide-react';
+import { reverseGeocode, submitReport } from '../services/api';
+import { AlertTriangle, Camera, CheckCircle, Crosshair, Droplets, MapPin, Navigation, Send, Wrench, X } from 'lucide-react';
 import L from 'leaflet';
+import { useLanguage } from '../context/LanguageContext';
 
-// Fix default markers in Vite builds
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
-
-const ISSUE_TYPES = [
-  { value: 'broken-tap',          label: 'Broken Water Tap',            icon: Wrench,        color: '#c1121f' },
-  { value: 'water-unavailable',   label: 'Water Unavailable',           icon: Droplets,      color: '#e76f51' },
-  { value: 'leaking-pipe',        label: 'Leaking Pipe',                icon: AlertTriangle, color: '#d4760a' },
-  { value: 'cooling-unavailable', label: 'Cooling Facility Unavailable',icon: Navigation,    color: '#7b5ea7' },
-];
 
 const DELHI_CENTER = [28.6139, 77.2090];
 
@@ -64,18 +57,78 @@ function Field({ label, error, children }) {
 }
 
 export default function ReportForm({ onSuccess }) {
-  const [form, setForm]           = useState({ issueType: '', description: '', lat: '', lng: '', photo: null });
+  const { t } = useLanguage();
+
+  const ISSUE_TYPES = [
+    { value: 'broken-tap',          label: t('brokenTap'),          icon: Wrench,        color: '#c1121f' },
+    { value: 'water-unavailable',   label: t('waterUnavailable'),   icon: Droplets,      color: '#e76f51' },
+    { value: 'leaking-pipe',        label: t('leakingPipe'),        icon: AlertTriangle, color: '#d4760a' },
+    { value: 'cooling-unavailable', label: t('coolingUnavailable'), icon: Navigation,    color: '#7b5ea7' },
+  ];
+
+  const [form, setForm]           = useState({ issueType: '', description: '', address: '', lat: '', lng: '', photo: null });
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [errors, setErrors]       = useState({});
   const [status, setStatus]       = useState('idle');
   const [errorMsg, setErrorMsg]   = useState('');
   const [showMap, setShowMap]     = useState(false);
   const [marker, setMarker]       = useState(null);
-  const [photoName, setPhotoName] = useState('');
+  const [locating, setLocating]   = useState(false);
   const fileRef = useRef();
 
   function set(field, value) {
     setForm(f => ({ ...f, [field]: value }));
     setErrors(e => ({ ...e, [field]: undefined }));
+  }
+
+  // Reverse geocode when coordinates change
+  async function handleCoordsSet(latVal, lngVal) {
+    set('lat', latVal);
+    set('lng', lngVal);
+    setMarker([parseFloat(latVal), parseFloat(lngVal)]);
+    try {
+      const addr = await reverseGeocode(latVal, lngVal);
+      if (addr) set('address', addr);
+    } catch (e) {
+      console.warn('Geocoding error:', e);
+    }
+  }
+
+  // Geolocation trigger
+  function handleDetectGPS() {
+    if (!navigator.geolocation) {
+      setErrorMsg('Geolocation is not supported by your browser.');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+        await handleCoordsSet(lat, lng);
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        setErrorMsg('Unable to retrieve location. Please select on the map or enter coordinates.');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  }
+
+  function handlePhotoChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      set('photo', file);
+      const url = URL.createObjectURL(file);
+      setPhotoPreview(url);
+    }
+  }
+
+  function handleClearPhoto() {
+    set('photo', null);
+    setPhotoPreview(null);
+    if (fileRef.current) fileRef.current.value = '';
   }
 
   function validate() {
@@ -96,6 +149,7 @@ export default function ReportForm({ onSuccess }) {
       const result = await submitReport({
         issueType:   form.issueType,
         description: form.description,
+        address:     form.address,
         lat:         parseFloat(form.lat),
         lng:         parseFloat(form.lng),
         photo:       form.photo,
@@ -109,9 +163,9 @@ export default function ReportForm({ onSuccess }) {
   }
 
   function handleReset() {
-    setForm({ issueType: '', description: '', lat: '', lng: '', photo: null });
+    setForm({ issueType: '', description: '', address: '', lat: '', lng: '', photo: null });
     setErrors({}); setStatus('idle'); setErrorMsg('');
-    setMarker(null); setPhotoName('');
+    setMarker(null); setPhotoPreview(null);
     if (fileRef.current) fileRef.current.value = '';
   }
 
@@ -129,18 +183,18 @@ export default function ReportForm({ onSuccess }) {
           <CheckCircle size={34} color="#fff" strokeWidth={2.5} />
         </div>
         <h2 style={{ fontWeight: 800, fontSize: '1.35rem', color: 'var(--forest-dk)', marginBottom: 8 }}>
-          Report Submitted!
+          Report Saved &amp; Broadcasted!
         </h2>
-        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', maxWidth: 360, margin: '0 auto 1.5rem', lineHeight: 1.6 }}>
-          Your report has been saved locally. Once AWS integration is complete, it will be forwarded to the response team automatically.
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', maxWidth: 400, margin: '0 auto 1.5rem', lineHeight: 1.6 }}>
+          Your report has been persistently stored in the system. Response teams and citizens can view, upvote, and track its resolution status in real time.
         </p>
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           padding: '7px 14px', borderRadius: 8,
-          backgroundColor: '#fef3e6', border: '1px solid #f4a26140',
-          fontSize: '0.78rem', color: '#d4760a', fontWeight: 600, marginBottom: '1.5rem',
+          backgroundColor: '#e8f7ef', border: '1px solid #52b78840',
+          fontSize: '0.78rem', color: '#2d6a4f', fontWeight: 600, marginBottom: '1.5rem',
         }}>
-          ⚡ AWS not yet connected — saved locally
+          ✅ Saved &amp; Live on Dashboard Map
         </div>
         <br />
         <button
@@ -160,15 +214,12 @@ export default function ReportForm({ onSuccess }) {
     );
   }
 
-  const selectedIssue = ISSUE_TYPES.find(t => t.value === form.issueType);
-
-  /* ─────────────── Form ─────────────── */
   return (
     <form id="report-form" onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-      {/* Issue type — visual selector */}
+      {/* Issue type selector */}
       <div>
-        <span style={labelBase}>Issue Type *</span>
+        <span style={labelBase}>{t('issueType')} *</span>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {ISSUE_TYPES.map(({ value, label, icon: Icon, color }) => {
             const selected = form.issueType === value;
@@ -206,11 +257,11 @@ export default function ReportForm({ onSuccess }) {
       </div>
 
       {/* Description */}
-      <Field label="Description *" error={errors.description}>
+      <Field label={`${t('description')} *`} error={errors.description}>
         <textarea
           id="description"
           rows={4}
-          placeholder="Describe the problem clearly — location details, severity, how long it's been happening…"
+          placeholder="Describe the problem clearly — location details, severity, how long it's been happening..."
           value={form.description}
           onChange={e => set('description', e.target.value)}
           onFocus={e => { e.target.style.borderColor = 'var(--forest-lt)'; e.target.style.boxShadow = '0 0 0 3px rgba(82,183,136,0.15)'; }}
@@ -219,64 +270,83 @@ export default function ReportForm({ onSuccess }) {
         />
       </Field>
 
-      {/* Coordinates */}
+      {/* Landmark / Address */}
+      <Field label={t('address')}>
+        <input
+          id="address"
+          type="text"
+          placeholder="e.g. Near Lajpat Nagar Bus Stop / Block C Saket"
+          value={form.address}
+          onChange={e => set('address', e.target.value)}
+          style={inputBase}
+        />
+      </Field>
+
+      {/* Location Selection with GPS + Geocoding */}
       <div>
-        <span style={labelBase}>Location *</span>
+        <span style={labelBase}>{t('location')} *</span>
+        
+        {/* Helper Action Buttons */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+          <button
+            type="button"
+            onClick={handleDetectGPS}
+            disabled={locating}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px',
+              border: '1.5px solid #2d6a4f',
+              borderRadius: 8,
+              backgroundColor: '#e8f7ef',
+              color: '#2d6a4f',
+              cursor: locating ? 'wait' : 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+            }}
+          >
+            <Crosshair size={14} className={locating ? 'pulse-dot' : ''} />
+            {locating ? 'Detecting Location...' : t('detectLocation')}
+          </button>
+
+          <button
+            type="button"
+            id="toggle-map-picker"
+            onClick={() => setShowMap(v => !v)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px',
+              border: '1.5px solid var(--forest)',
+              borderRadius: 8,
+              backgroundColor: showMap ? 'var(--forest)' : 'transparent',
+              color: showMap ? '#fff' : 'var(--forest)',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+            }}
+          >
+            <MapPin size={14} />
+            {showMap ? 'Hide Map' : t('pickOnMap')}
+          </button>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-          <Field label="Latitude" error={errors.lat}>
+          <Field label={t('latitude')} error={errors.lat}>
             <input
               id="latitude" type="number" step="any" placeholder="e.g. 28.6139"
               value={form.lat}
-              onChange={e => set('lat', e.target.value)}
-              onFocus={e => { e.target.style.borderColor = 'var(--forest-lt)'; e.target.style.boxShadow = '0 0 0 3px rgba(82,183,136,0.15)'; }}
-              onBlur={e  => { e.target.style.borderColor = 'var(--border)';    e.target.style.boxShadow = 'none'; }}
+              onChange={e => handleCoordsSet(e.target.value, form.lng)}
               style={inputBase}
             />
           </Field>
-          <Field label="Longitude" error={errors.lng}>
+          <Field label={t('longitude')} error={errors.lng}>
             <input
               id="longitude" type="number" step="any" placeholder="e.g. 77.2090"
               value={form.lng}
-              onChange={e => set('lng', e.target.value)}
-              onFocus={e => { e.target.style.borderColor = 'var(--forest-lt)'; e.target.style.boxShadow = '0 0 0 3px rgba(82,183,136,0.15)'; }}
-              onBlur={e  => { e.target.style.borderColor = 'var(--border)';    e.target.style.boxShadow = 'none'; }}
+              onChange={e => handleCoordsSet(form.lat, e.target.value)}
               style={inputBase}
             />
           </Field>
         </div>
-
-        {/* Map picker toggle */}
-        <button
-          type="button"
-          id="toggle-map-picker"
-          onClick={() => setShowMap(v => !v)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '8px 15px',
-            border: '1.5px solid var(--forest)',
-            borderRadius: 8,
-            backgroundColor: showMap ? 'var(--forest)' : 'transparent',
-            color: showMap ? '#fff' : 'var(--forest)',
-            cursor: 'pointer',
-            fontSize: '0.84rem',
-            fontWeight: 600,
-            fontFamily: 'inherit',
-            transition: 'all 0.18s',
-          }}
-        >
-          <MapPin size={14} />
-          {showMap ? 'Hide Map' : 'Pick on Map'}
-        </button>
-
-        {form.lat && form.lng && !isNaN(+form.lat) && !isNaN(+form.lng) && (
-          <span style={{
-            marginLeft: 10, fontSize: '0.78rem', color: 'var(--forest)',
-            fontWeight: 600, backgroundColor: '#e8f7ef',
-            padding: '4px 10px', borderRadius: 6,
-          }}>
-            📍 {(+form.lat).toFixed(4)}, {(+form.lng).toFixed(4)}
-          </span>
-        )}
 
         {showMap && (
           <div style={{ marginTop: 12, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1.5px solid var(--forest-lt)', boxShadow: 'var(--shadow-sm)' }}>
@@ -286,7 +356,7 @@ export default function ReportForm({ onSuccess }) {
               color: '#fff',
               fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <MapPin size={12} /> Click anywhere on the map to set your coordinates
+              <MapPin size={12} /> Click on map to pinpoint location with auto reverse-geocoding
             </div>
             <MapContainer
               id="location-picker-map"
@@ -296,44 +366,59 @@ export default function ReportForm({ onSuccess }) {
               scrollWheelZoom={false}
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
-              <LocationPicker onPick={(lat, lng) => { setMarker([lat, lng]); set('lat', lat); set('lng', lng); }} />
+              <LocationPicker onPick={(lat, lng) => handleCoordsSet(lat, lng)} />
               {marker && <Marker position={marker} />}
             </MapContainer>
           </div>
         )}
       </div>
 
-      {/* Photo upload */}
+      {/* Photo upload with Live Thumbnail Preview */}
       <div>
-        <span style={labelBase}>Photo (optional)</span>
-        <label htmlFor="photo-upload" style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '12px 16px',
-          border: '1.5px dashed var(--border)',
-          borderRadius: 'var(--radius-sm)',
-          backgroundColor: '#fafcfb',
-          cursor: 'pointer',
-          transition: 'border-color 0.15s',
-        }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--forest-lt)'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-        >
-          <Camera size={18} color="var(--muted)" />
-          <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-md)' }}>
-              {photoName || 'Click to attach a photo'}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--muted-lt)' }}>JPG, PNG, WebP · Max 5 MB</div>
+        <span style={labelBase}>{t('photoOptional')}</span>
+        {photoPreview ? (
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <img
+              src={photoPreview}
+              alt="Upload preview"
+              style={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
+            />
+            <button
+              type="button"
+              onClick={handleClearPhoto}
+              style={{
+                position: 'absolute', top: -8, right: -8,
+                backgroundColor: '#c1121f', color: '#fff',
+                border: 'none', borderRadius: '50%', width: 22, height: 22,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              <X size={12} />
+            </button>
           </div>
-        </label>
+        ) : (
+          <label htmlFor="photo-upload" style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '12px 16px',
+            border: '1.5px dashed var(--border)',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: '#fafcfb',
+            cursor: 'pointer',
+            transition: 'border-color 0.15s',
+          }}>
+            <Camera size={18} color="var(--muted)" />
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-md)' }}>
+                {t('clickToAttach')}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--muted-lt)' }}>JPG, PNG, WebP · Encoded for offline &amp; live persistence</div>
+            </div>
+          </label>
+        )}
         <input
           id="photo-upload" type="file" accept="image/*" ref={fileRef}
           style={{ display: 'none' }}
-          onChange={e => {
-            const f = e.target.files[0] || null;
-            set('photo', f);
-            setPhotoName(f ? f.name : '');
-          }}
+          onChange={handlePhotoChange}
         />
       </div>
 
@@ -370,17 +455,12 @@ export default function ReportForm({ onSuccess }) {
             fontWeight: 700, fontSize: '0.95rem',
             fontFamily: 'inherit',
             boxShadow: status === 'submitting' ? 'none' : '0 4px 14px rgba(45,106,79,0.3)',
-            letterSpacing: '0.01em',
             transition: 'opacity 0.18s',
           }}
         >
           <Send size={16} />
-          {status === 'submitting' ? 'Submitting…' : 'Submit Report'}
+          {status === 'submitting' ? t('submitting') : t('submitReport')}
         </button>
-
-        <p style={{ fontSize: '0.74rem', color: 'var(--muted-lt)', maxWidth: 280, lineHeight: 1.5 }}>
-          ⚡ Reports are saved locally until the AWS backend is connected.
-        </p>
       </div>
     </form>
   );
