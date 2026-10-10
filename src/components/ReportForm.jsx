@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
-import { reverseGeocode, submitReport } from '../services/api';
-import { AlertTriangle, Camera, CheckCircle, Crosshair, Droplets, MapPin, Navigation, Send, Wrench, X } from 'lucide-react';
+import { submitReport } from '../services/api';
+import { AlertCircle, AlertTriangle, Camera, CheckCircle2, Droplets, MapPin, Send, Wrench } from 'lucide-react';
 import L from 'leaflet';
-import { useLanguage } from '../context/LanguageContext';
 
+// Leaflet default icon fix
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -12,456 +12,384 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+const ISSUE_OPTIONS = [
+  { value: 'broken-tap', label: 'Broken Water Tap', icon: Wrench, description: 'Public tap broken, leaking, or damaged' },
+  { value: 'water-unavailable', label: 'No Water Supply', icon: Droplets, description: 'Water source completely dry or shut off' },
+  { value: 'leaking-pipe', label: 'Pipe Leak / Burst', icon: AlertTriangle, description: 'Main pipe leaking or wasting clean water' },
+  { value: 'cooling-unavailable', label: 'Cooling Station Outage', icon: AlertCircle, description: 'Public misting shelter or cooler broken' },
+];
+
 const DELHI_CENTER = [28.6139, 77.2090];
 
-function LocationPicker({ onPick }) {
-  useMapEvents({ click: (e) => onPick(e.latlng.lat.toFixed(6), e.latlng.lng.toFixed(6)) });
+function MapClickPicker({ onPick }) {
+  useMapEvents({
+    click(e) {
+      onPick(e.latlng.lat.toFixed(6), e.latlng.lng.toFixed(6));
+    },
+  });
   return null;
 }
 
-const inputBase = {
-  width: '100%',
-  padding: '10px 13px',
-  border: '1.5px solid var(--border)',
-  borderRadius: 'var(--radius-sm)',
-  fontSize: '0.9rem',
-  color: 'var(--text)',
-  backgroundColor: '#fff',
-  outline: 'none',
-  fontFamily: 'inherit',
-  transition: 'border-color 0.18s, box-shadow 0.18s',
-};
-
-const labelBase = {
-  display: 'block',
-  fontSize: '0.78rem',
-  fontWeight: 700,
-  color: 'var(--muted)',
-  marginBottom: 6,
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-};
-
-function Field({ label, error, children }) {
-  return (
-    <div>
-      <label style={labelBase}>{label}</label>
-      {children}
-      {error && (
-        <p style={{ color: 'var(--danger)', fontSize: '0.76rem', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <AlertTriangle size={11} /> {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 export default function ReportForm({ onSuccess }) {
-  const { t } = useLanguage();
+  const [form, setForm] = useState({ issueType: '', description: '', lat: '', lng: '', photo: null });
+  const [errors, setErrors] = useState({});
+  const [status, setStatus] = useState('idle'); // idle | submitting | success | error
+  const [errorMsg, setErrorMsg] = useState('');
+  const [showMap, setShowMap] = useState(false);
+  const [markerCoords, setMarkerCoords] = useState(null);
+  const fileInputRef = useRef();
 
-  const ISSUE_TYPES = [
-    { value: 'broken-tap',          label: t('brokenTap'),          icon: Wrench,        color: '#c1121f' },
-    { value: 'water-unavailable',   label: t('waterUnavailable'),   icon: Droplets,      color: '#e76f51' },
-    { value: 'leaking-pipe',        label: t('leakingPipe'),        icon: AlertTriangle, color: '#d4760a' },
-    { value: 'cooling-unavailable', label: t('coolingUnavailable'), icon: Navigation,    color: '#7b5ea7' },
-  ];
-
-  const [form, setForm]           = useState({ issueType: '', description: '', address: '', lat: '', lng: '', photo: null });
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const [errors, setErrors]       = useState({});
-  const [status, setStatus]       = useState('idle');
-  const [errorMsg, setErrorMsg]   = useState('');
-  const [showMap, setShowMap]     = useState(false);
-  const [marker, setMarker]       = useState(null);
-  const [locating, setLocating]   = useState(false);
-  const fileRef = useRef();
-
-  function set(field, value) {
-    setForm(f => ({ ...f, [field]: value }));
-    setErrors(e => ({ ...e, [field]: undefined }));
-  }
-
-  // Reverse geocode when coordinates change
-  async function handleCoordsSet(latVal, lngVal) {
-    set('lat', latVal);
-    set('lng', lngVal);
-    setMarker([parseFloat(latVal), parseFloat(lngVal)]);
-    try {
-      const addr = await reverseGeocode(latVal, lngVal);
-      if (addr) set('address', addr);
-    } catch (e) {
-      console.warn('Geocoding error:', e);
-    }
-  }
-
-  // Geolocation trigger
-  function handleDetectGPS() {
-    if (!navigator.geolocation) {
-      setErrorMsg('Geolocation is not supported by your browser.');
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude.toFixed(6);
-        const lng = position.coords.longitude.toFixed(6);
-        await handleCoordsSet(lat, lng);
-        setLocating(false);
-      },
-      (err) => {
-        setLocating(false);
-        setErrorMsg('Unable to retrieve location. Please select on the map or enter coordinates.');
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
-  }
-
-  function handlePhotoChange(e) {
-    const file = e.target.files[0];
-    if (file) {
-      set('photo', file);
-      const url = URL.createObjectURL(file);
-      setPhotoPreview(url);
-    }
-  }
-
-  function handleClearPhoto() {
-    set('photo', null);
-    setPhotoPreview(null);
-    if (fileRef.current) fileRef.current.value = '';
+  function updateField(field, value) {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: undefined }));
   }
 
   function validate() {
-    const e = {};
-    if (!form.issueType)              e.issueType   = 'Please select an issue type.';
-    if (!form.description.trim())     e.description = 'Description is required.';
-    if (!form.lat || isNaN(+form.lat)) e.lat        = 'Enter a valid latitude.';
-    if (!form.lng || isNaN(+form.lng)) e.lng        = 'Enter a valid longitude.';
-    return e;
+    const errs = {};
+    if (!form.issueType) errs.issueType = 'Please select the type of problem.';
+    if (!form.description.trim()) errs.description = 'Please describe what you observed.';
+    if (!form.lat || isNaN(+form.lat)) errs.lat = 'Valid latitude is required.';
+    if (!form.lng || isNaN(+form.lng)) errs.lng = 'Valid longitude is required.';
+    return errs;
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    const validationErrs = validate();
+    if (Object.keys(validationErrs).length > 0) {
+      setErrors(validationErrs);
+      return;
+    }
+
     setStatus('submitting');
     try {
       const result = await submitReport({
-        issueType:   form.issueType,
+        issueType: form.issueType,
         description: form.description,
-        address:     form.address,
-        lat:         parseFloat(form.lat),
-        lng:         parseFloat(form.lng),
-        photo:       form.photo,
+        lat: parseFloat(form.lat),
+        lng: parseFloat(form.lng),
+        photo: form.photo,
       });
       setStatus('success');
       if (onSuccess) onSuccess(result);
     } catch (err) {
       setStatus('error');
-      setErrorMsg(err.message || 'Submission failed. Please try again.');
+      setErrorMsg(err.message || 'Unable to submit report. Please try again.');
     }
   }
 
   function handleReset() {
-    setForm({ issueType: '', description: '', address: '', lat: '', lng: '', photo: null });
-    setErrors({}); setStatus('idle'); setErrorMsg('');
-    setMarker(null); setPhotoPreview(null);
-    if (fileRef.current) fileRef.current.value = '';
+    setForm({ issueType: '', description: '', lat: '', lng: '', photo: null });
+    setErrors({});
+    setStatus('idle');
+    setErrorMsg('');
+    setMarkerCoords(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  /* ─────────────── Success Screen ─────────────── */
+  // Outdoor high-contrast input styles
+  const inputStyle = {
+    width: '100%',
+    minHeight: 48,
+    padding: '12px 14px',
+    border: '2px solid var(--border-color)',
+    borderRadius: 'var(--radius-md)',
+    fontSize: '0.95rem',
+    color: 'var(--text-main)',
+    backgroundColor: 'var(--bg-surface)',
+    outline: 'none',
+    fontFamily: 'inherit',
+    transition: 'border-color var(--transition-fast)',
+  };
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '0.82rem',
+    fontWeight: 800,
+    color: 'var(--text-sub)',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  };
+
   if (status === 'success') {
     return (
-      <div className="fade-up" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
+      <div style={{
+        padding: '2.5rem 1.5rem',
+        backgroundColor: 'var(--status-ok-bg)',
+        border: '2px solid var(--status-ok)',
+        borderRadius: 'var(--radius-xl)',
+        textAlign: 'center',
+        maxWidth: 580,
+        margin: '0 auto',
+      }} className="animate-fade-in">
         <div style={{
-          width: 72, height: 72, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #52b788, #2d6a4f)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 1.25rem',
-          boxShadow: '0 6px 20px rgba(82,183,136,0.4)',
+          width: 64,
+          height: 64,
+          borderRadius: '50%',
+          backgroundColor: 'var(--status-ok)',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 16px',
         }}>
-          <CheckCircle size={34} color="#fff" strokeWidth={2.5} />
+          <CheckCircle2 size={36} />
         </div>
-        <h2 style={{ fontWeight: 800, fontSize: '1.35rem', color: 'var(--forest-dk)', marginBottom: 8 }}>
-          Report Saved &amp; Broadcasted!
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>
+          Report Successfully Saved
         </h2>
-        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', maxWidth: 400, margin: '0 auto 1.5rem', lineHeight: 1.6 }}>
-          Your report has been persistently stored in the system. Response teams and citizens can view, upvote, and track its resolution status in real time.
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-sub)', lineHeight: 1.5, marginBottom: 20 }}>
+          Your water incident report has been recorded locally. It will automatically sync to community administrators when the AWS serverless backend is live.
         </p>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '7px 14px', borderRadius: 8,
-          backgroundColor: '#e8f7ef', border: '1px solid #52b78840',
-          fontSize: '0.78rem', color: '#2d6a4f', fontWeight: 600, marginBottom: '1.5rem',
-        }}>
-          ✅ Saved &amp; Live on Dashboard Map
-        </div>
-        <br />
         <button
-          id="report-submit-another"
           onClick={handleReset}
           style={{
-            padding: '11px 28px',
-            background: 'linear-gradient(135deg, #2d6a4f, #40916c)',
-            color: '#fff', border: 'none', borderRadius: 8,
-            cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem',
-            boxShadow: '0 3px 12px rgba(45,106,79,0.3)',
+            minHeight: 48,
+            padding: '12px 28px',
+            backgroundColor: 'var(--brand-navy)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 'var(--radius-md)',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            cursor: 'pointer',
           }}
         >
-          Submit Another Report
+          Submit Another Problem
         </button>
       </div>
     );
   }
 
   return (
-    <form id="report-form" onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* Issue type selector */}
+      {/* 1. Issue Type Selection (Large thumb buttons) */}
       <div>
-        <span style={labelBase}>{t('issueType')} *</span>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {ISSUE_TYPES.map(({ value, label, icon: Icon, color }) => {
+        <label style={labelStyle}>1. Select Water / Cooling Issue *</label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+          {ISSUE_OPTIONS.map(({ value, label, icon: Icon, description }) => {
             const selected = form.issueType === value;
             return (
               <button
                 key={value}
                 type="button"
-                onClick={() => set('issueType', value)}
+                onClick={() => updateField('issueType', value)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 9,
-                  padding: '10px 13px',
-                  borderRadius: 10,
-                  border: selected ? `2px solid ${color}` : '1.5px solid var(--border)',
-                  backgroundColor: selected ? `${color}10` : '#fff',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  fontSize: '0.84rem',
-                  fontWeight: selected ? 700 : 500,
-                  color: selected ? color : 'var(--text-md)',
+                  minHeight: 60,
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  border: selected ? '2px solid var(--brand-aqua)' : '2px solid var(--border-color)',
+                  backgroundColor: selected ? 'var(--brand-aqua-light)' : 'var(--bg-surface)',
+                  color: selected ? 'var(--brand-aqua-dark)' : 'var(--text-main)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
                   textAlign: 'left',
-                  transition: 'all 0.15s',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)',
                 }}
               >
-                <Icon size={15} color={selected ? color : 'var(--muted)'} />
-                {label}
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  backgroundColor: selected ? 'var(--brand-aqua)' : 'var(--bg-surface-subtle)',
+                  color: selected ? '#0f2e35' : 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Icon size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{label}</div>
+                  <div style={{ fontSize: '0.74rem', opacity: 0.8 }}>{description}</div>
+                </div>
               </button>
             );
           })}
         </div>
         {errors.issueType && (
-          <p style={{ color: 'var(--danger)', fontSize: '0.76rem', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <AlertTriangle size={11} /> {errors.issueType}
-          </p>
+          <div style={{ color: 'var(--status-err)', fontSize: '0.8rem', fontWeight: 700, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <AlertTriangle size={14} /> {errors.issueType}
+          </div>
         )}
       </div>
 
-      {/* Description */}
-      <Field label={`${t('description')} *`} error={errors.description}>
-        <textarea
-          id="description"
-          rows={4}
-          placeholder="Describe the problem clearly — location details, severity, how long it's been happening..."
-          value={form.description}
-          onChange={e => set('description', e.target.value)}
-          onFocus={e => { e.target.style.borderColor = 'var(--forest-lt)'; e.target.style.boxShadow = '0 0 0 3px rgba(82,183,136,0.15)'; }}
-          onBlur={e  => { e.target.style.borderColor = 'var(--border)';    e.target.style.boxShadow = 'none'; }}
-          style={{ ...inputBase, resize: 'vertical', lineHeight: 1.65 }}
-        />
-      </Field>
-
-      {/* Landmark / Address */}
-      <Field label={t('address')}>
-        <input
-          id="address"
-          type="text"
-          placeholder="e.g. Near Lajpat Nagar Bus Stop / Block C Saket"
-          value={form.address}
-          onChange={e => set('address', e.target.value)}
-          style={inputBase}
-        />
-      </Field>
-
-      {/* Location Selection with GPS + Geocoding */}
+      {/* 2. Description */}
       <div>
-        <span style={labelBase}>{t('location')} *</span>
-        
-        {/* Helper Action Buttons */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-          <button
-            type="button"
-            onClick={handleDetectGPS}
-            disabled={locating}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px',
-              border: '1.5px solid #2d6a4f',
-              borderRadius: 8,
-              backgroundColor: '#e8f7ef',
-              color: '#2d6a4f',
-              cursor: locating ? 'wait' : 'pointer',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-            }}
-          >
-            <Crosshair size={14} className={locating ? 'pulse-dot' : ''} />
-            {locating ? 'Detecting Location...' : t('detectLocation')}
-          </button>
+        <label htmlFor="description-field" style={labelStyle}>2. Problem Description *</label>
+        <textarea
+          id="description-field"
+          rows={4}
+          placeholder="Describe what is happening (e.g., tap handle broken, main road flooding, duration)..."
+          value={form.description}
+          onChange={(e) => updateField('description', e.target.value)}
+          style={{ ...inputStyle, minHeight: 110, resize: 'vertical' }}
+        />
+        {errors.description && (
+          <div style={{ color: 'var(--status-err)', fontSize: '0.8rem', fontWeight: 700, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <AlertTriangle size={14} /> {errors.description}
+          </div>
+        )}
+      </div>
 
-          <button
-            type="button"
-            id="toggle-map-picker"
-            onClick={() => setShowMap(v => !v)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px',
-              border: '1.5px solid var(--forest)',
-              borderRadius: 8,
-              backgroundColor: showMap ? 'var(--forest)' : 'transparent',
-              color: showMap ? '#fff' : 'var(--forest)',
-              cursor: 'pointer',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-            }}
-          >
-            <MapPin size={14} />
-            {showMap ? 'Hide Map' : t('pickOnMap')}
-          </button>
-        </div>
-
+      {/* 3. Location (Lat / Lng + Map Picker) */}
+      <div>
+        <label style={labelStyle}>3. Incident Location (Coordinates) *</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-          <Field label={t('latitude')} error={errors.lat}>
+          <div>
             <input
-              id="latitude" type="number" step="any" placeholder="e.g. 28.6139"
+              type="number"
+              step="any"
+              placeholder="Latitude (e.g. 28.6139)"
               value={form.lat}
-              onChange={e => handleCoordsSet(e.target.value, form.lng)}
-              style={inputBase}
+              onChange={(e) => updateField('lat', e.target.value)}
+              style={inputStyle}
             />
-          </Field>
-          <Field label={t('longitude')} error={errors.lng}>
+            {errors.lat && (
+              <div style={{ color: 'var(--status-err)', fontSize: '0.76rem', fontWeight: 700, marginTop: 4 }}>
+                {errors.lat}
+              </div>
+            )}
+          </div>
+          <div>
             <input
-              id="longitude" type="number" step="any" placeholder="e.g. 77.2090"
+              type="number"
+              step="any"
+              placeholder="Longitude (e.g. 77.2090)"
               value={form.lng}
-              onChange={e => handleCoordsSet(form.lat, e.target.value)}
-              style={inputBase}
+              onChange={(e) => updateField('lng', e.target.value)}
+              style={inputStyle}
             />
-          </Field>
+            {errors.lng && (
+              <div style={{ color: 'var(--status-err)', fontSize: '0.76rem', fontWeight: 700, marginTop: 4 }}>
+                {errors.lng}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Toggle Map Picker Button */}
+        <button
+          type="button"
+          onClick={() => setShowMap(!showMap)}
+          style={{
+            minHeight: 44,
+            padding: '8px 16px',
+            border: '2px solid var(--brand-aqua)',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: showMap ? 'var(--brand-aqua)' : 'transparent',
+            color: showMap ? '#0f2e35' : 'var(--brand-aqua-dark)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <MapPin size={16} />
+          {showMap ? 'Hide Map Picker' : '📍 Tap Location on Map'}
+        </button>
 
         {showMap && (
-          <div style={{ marginTop: 12, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1.5px solid var(--forest-lt)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{
-              padding: '7px 12px',
-              background: 'linear-gradient(135deg, #1b4332, #2d6a4f)',
-              color: '#fff',
-              fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <MapPin size={12} /> Click on map to pinpoint location with auto reverse-geocoding
+          <div style={{ marginTop: 10, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '2px solid var(--border-color)' }}>
+            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-surface-subtle)', fontSize: '0.78rem', color: 'var(--text-sub)', fontWeight: 600 }}>
+              Tap anywhere on the map to set location coordinates.
             </div>
             <MapContainer
-              id="location-picker-map"
-              center={marker ? [marker[0], marker[1]] : DELHI_CENTER}
+              center={markerCoords ? [markerCoords[0], markerCoords[1]] : DELHI_CENTER}
               zoom={11}
-              style={{ height: 300 }}
+              style={{ height: 260, width: '100%' }}
               scrollWheelZoom={false}
             >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
-              <LocationPicker onPick={(lat, lng) => handleCoordsSet(lat, lng)} />
-              {marker && <Marker position={marker} />}
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <MapClickPicker onPick={(lat, lng) => {
+                setMarkerCoords([lat, lng]);
+                updateField('lat', lat);
+                updateField('lng', lng);
+              }} />
+              {markerCoords && <Marker position={markerCoords} />}
             </MapContainer>
           </div>
         )}
       </div>
 
-      {/* Photo upload with Live Thumbnail Preview */}
+      {/* 4. Optional Photo Attachment */}
       <div>
-        <span style={labelBase}>{t('photoOptional')}</span>
-        {photoPreview ? (
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <img
-              src={photoPreview}
-              alt="Upload preview"
-              style={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
+        <label style={labelStyle}>4. Photo Attachment (Optional)</label>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px 16px',
+          border: '2px dashed var(--border-color)',
+          borderRadius: 'var(--radius-md)',
+          backgroundColor: 'var(--bg-surface-subtle)',
+        }}>
+          <Camera size={24} color="var(--text-muted)" />
+          <div style={{ flex: 1 }}>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={(e) => updateField('photo', e.target.files[0] || null)}
+              style={{ fontSize: '0.85rem', color: 'var(--text-sub)' }}
             />
-            <button
-              type="button"
-              onClick={handleClearPhoto}
-              style={{
-                position: 'absolute', top: -8, right: -8,
-                backgroundColor: '#c1121f', color: '#fff',
-                border: 'none', borderRadius: '50%', width: 22, height: 22,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}
-            >
-              <X size={12} />
-            </button>
-          </div>
-        ) : (
-          <label htmlFor="photo-upload" style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '12px 16px',
-            border: '1.5px dashed var(--border)',
-            borderRadius: 'var(--radius-sm)',
-            backgroundColor: '#fafcfb',
-            cursor: 'pointer',
-            transition: 'border-color 0.15s',
-          }}>
-            <Camera size={18} color="var(--muted)" />
-            <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-md)' }}>
-                {t('clickToAttach')}
-              </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--muted-lt)' }}>JPG, PNG, WebP · Encoded for offline &amp; live persistence</div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              Helps dispatch teams prioritize repairs (Max 5MB)
             </div>
-          </label>
-        )}
-        <input
-          id="photo-upload" type="file" accept="image/*" ref={fileRef}
-          style={{ display: 'none' }}
-          onChange={handlePhotoChange}
-        />
+          </div>
+        </div>
       </div>
 
-      {/* Global error */}
+      {/* Submit Error */}
       {status === 'error' && (
         <div style={{
-          padding: '11px 14px',
-          backgroundColor: '#fde8e8',
-          border: '1px solid #c1121f33',
-          borderRadius: 8,
-          color: 'var(--danger)',
+          padding: '12px',
+          borderRadius: 'var(--radius-md)',
+          backgroundColor: 'var(--status-err-bg)',
+          color: 'var(--status-err)',
           fontSize: '0.85rem',
-          display: 'flex', alignItems: 'center', gap: 8,
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
         }}>
-          <AlertTriangle size={16} /> {errorMsg}
+          <AlertTriangle size={18} />
+          {errorMsg}
         </div>
       )}
 
-      {/* Submit */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <button
-          id="submit-report-btn"
-          type="submit"
-          disabled={status === 'submitting'}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '12px 28px',
-            background: status === 'submitting'
-              ? 'var(--muted-lt)'
-              : 'linear-gradient(135deg, #2d6a4f, #40916c)',
-            color: '#fff',
-            border: 'none', borderRadius: 10,
-            cursor: status === 'submitting' ? 'not-allowed' : 'pointer',
-            fontWeight: 700, fontSize: '0.95rem',
-            fontFamily: 'inherit',
-            boxShadow: status === 'submitting' ? 'none' : '0 4px 14px rgba(45,106,79,0.3)',
-            transition: 'opacity 0.18s',
-          }}
-        >
-          <Send size={16} />
-          {status === 'submitting' ? t('submitting') : t('submitReport')}
-        </button>
-      </div>
+      {/* Submit Button (Thumb-reachable outdoor size) */}
+      <button
+        type="submit"
+        disabled={status === 'submitting'}
+        style={{
+          minHeight: 52,
+          padding: '14px 28px',
+          backgroundColor: 'var(--brand-aqua)',
+          color: '#0f2e35',
+          border: 'none',
+          borderRadius: 'var(--radius-md)',
+          fontWeight: 800,
+          fontSize: '1rem',
+          cursor: status === 'submitting' ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          boxShadow: '0 4px 14px rgba(0,168,150,0.35)',
+          transition: 'transform var(--transition-fast)',
+        }}
+      >
+        <Send size={18} />
+        {status === 'submitting' ? 'Saving Report...' : 'Submit Incident Report'}
+      </button>
     </form>
   );
 }

@@ -1,108 +1,114 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-/* ── Google Font ── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-/* ── Design Tokens ── */
 :root {
-  --forest:       #2d6a4f;
-  --forest-dk:    #1b4332;
-  --forest-md:    #40916c;
-  --forest-lt:    #52b788;
-  --leaf:         #74c69d;
-  --leaf-lt:      #b7e4c7;
+  /* Default DARK Theme Tokens (Matching Reference Screenshot #07201F) */
+  --bg-app: #07201f;
+  --bg-surface: #0c2e2c;
+  --bg-surface-subtle: #082423;
+  --border-color: rgba(111, 211, 184, 0.15);
+  --border-subtle: rgba(255, 255, 255, 0.08);
 
-  --offwhite:     #f4f7f5;
-  --card:         #ffffff;
-  --border:       #dde8e2;
-  --border-lt:    #eef4f0;
+  --text-main: #ffffff;
+  --text-sub: #b7ded5;
+  --text-muted: #72a397;
 
-  --text:         #172b22;
-  --text-md:      #2e4a3a;
-  --muted:        #5e7a6b;
-  --muted-lt:     #8aa898;
+  /* Mint/Aqua Brand Accent */
+  --brand-mint: #6fd3b8;
+  --brand-navy: #041716;
+  --brand-aqua-light: rgba(111, 211, 184, 0.15);
+  --brand-aqua-dark: #6fd3b8;
 
-  --accent:       #e76f51;
-  --accent-lt:    #f4a27e;
-  --warn:         #f4a261;
-  --danger:       #c1121f;
+  /* Reserved Heat Risk Colors */
+  --heat-low: #6fd3b8;
+  --heat-mod: #f4d35e;
+  --heat-high: #ee964b;
+  --heat-extreme: #f95738;
+  --heat-mod-bg: #2b1b12;
 
-  --low:          #52b788;
-  --moderate:     #f4a261;
-  --high:         #e76f51;
-  --severe:       #c1121f;
+  /* Border Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
 
-  --shadow-sm:    0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md:    0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
-  --shadow-lg:    0 10px 30px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
-
-  --radius-sm:    8px;
-  --radius-md:    12px;
-  --radius-lg:    16px;
+  /* Shadows & Transitions */
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --transition-fast: 180ms ease-in-out;
 }
 
-/* ── Reset ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[data-theme='light'] {
+  --bg-app: #f2f8f6;
+  --bg-surface: #ffffff;
+  --bg-surface-subtle: #e9f3f0;
+  --border-color: #d1e5e0;
+  --border-subtle: #e2efeb;
 
-html { scroll-behavior: smooth; }
+  --text-main: #07201f;
+  --text-sub: #1f4e48;
+  --text-muted: #537a73;
+
+  --brand-mint: #008f72;
+  --brand-navy: #07201f;
+  --brand-aqua-light: #e0f4f0;
+  --brand-aqua-dark: #007a6e;
+
+  --heat-mod-bg: #fff7ed;
+
+  --shadow-sm: 0 2px 10px rgba(7, 32, 31, 0.06);
+  --shadow-md: 0 6px 20px rgba(7, 32, 31, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--offwhite);
-  color: var(--text);
-  line-height: 1.6;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Leaflet z-index fix ── */
-.leaflet-container { z-index: 0; }
-.leaflet-pane,
-.leaflet-tile,
-.leaflet-marker-icon,
-.leaflet-marker-shadow,
-.leaflet-tile-container,
-.leaflet-overlay-pane,
-.leaflet-shadow-pane,
-.leaflet-marker-pane,
-.leaflet-popup-pane,
-.leaflet-control { z-index: 0 !important; }
-.leaflet-top, .leaflet-bottom { z-index: 1 !important; }
-.leaflet-popup { z-index: 2 !important; }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted-lt); }
-
-/* ── Focus rings ── */
-:focus-visible {
-  outline: 2px solid var(--forest-lt);
-  outline-offset: 2px;
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 220ms ease-in-out forwards;
 }
 
-/* ── Skeleton shimmer ── */
-@keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
-}
-.skeleton {
-  background: linear-gradient(90deg, var(--border-lt) 25%, #e8f0ec 50%, var(--border-lt) 75%);
-  background-size: 800px 100%;
-  animation: shimmer 1.6s infinite linear;
-  border-radius: var(--radius-sm);
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* ── Fade-in ── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-.fade-up { animation: fadeUp 0.35s ease both; }
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 99px;
+}
 
-/* ── Pulse dot ── */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.5; transform: scale(0.85); }
+/* Leaflet Map Custom Tweaks */
+.leaflet-container {
+  background-color: var(--bg-app) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
-.pulse-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
+
+[data-theme='dark'] .leaflet-tile {
+  filter: brightness(0.68) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7) !important;
+}

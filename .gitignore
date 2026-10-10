@@ -1,4 +1,6 @@
-# Logs
+# ==========================================
+# LOGS
+# ==========================================
 logs
 *.log
 npm-debug.log*
@@ -7,18 +9,109 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# ==========================================
+# REACT / VITE / NODE.JS
+# ==========================================
+node_modules/
+dist/
+dist-ssr/
+build/
+coverage/
 *.local
 
-# Editor directories and files
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Cache
+.vite/
+.eslintcache
+.parcel-cache/
+
+# ==========================================
+# SPRING BOOT / JAVA
+# ==========================================
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+target/
+
+# Gradle
+.gradle/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Java crash logs
+hs_err_pid*
+replay_pid*
+
+# ==========================================
+# SPRING BOOT LOCAL CONFIGURATION
+# ==========================================
+application-local.properties
+application-local.yml
+application-local.yaml
+application-dev-local.properties
+application-dev-local.yml
+application-dev-local.yaml
+
+# ==========================================
+# EDITOR DIRECTORIES AND FILES
+# ==========================================
+
+# VS Code
 .vscode/*
 !.vscode/extensions.json
-.idea
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse / Spring Tool Suite
+.project
+.classpath
+.settings/
+.springBeans
+.sts4-cache/
+
+# Original editor exclusions
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# ==========================================
+# OPERATING SYSTEM
+# ==========================================
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# SECRETS / CERTIFICATES
+# ==========================================
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+
+# ==========================================
+# TEST REPORTS / TEMPORARY FILES
+# ==========================================
+surefire-reports/
+failsafe-reports/
+test-results/
+tmp/
+temp/
+*.tmp
+*.bak

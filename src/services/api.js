@@ -1,199 +1,219 @@
+import { HOURLY_FORECAST, MOCK_PLACES, MOCK_REPORTS } from '../data/mockData';
+import { calculateHaversineDistance, calculateWalkTime, WATER_POINTS_DATA } from '../data/waterPoints';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
+// Internal local memory state for session mutations
+let localReports = [...MOCK_REPORTS];
+let localPlaces  = [...MOCK_PLACES];
+let localWaterPoints = [...WATER_POINTS_DATA];
+
 /**
- * api.js — Persisted Data & GIS Service
- * Uses browser localStorage for data persistence across reloads.
- * Connects to OpenStreetMap Nominatim API for free reverse geocoding.
+ * Fetch local heat conditions & hourly forecast
  */
-
-import { SAMPLE_REPORTS, SAMPLE_WATER_POINTS } from '../data/sampleData';
-
-const STORAGE_KEY_REPORTS = 'heatshield_reports_v2';
-const STORAGE_KEY_WATER_POINTS = 'heatshield_water_points_v2';
-
-const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
-
-// Helper: Read from localStorage or seed with defaults
-function getStoredReports() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_REPORTS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY_REPORTS, JSON.stringify(SAMPLE_REPORTS));
-      return SAMPLE_REPORTS;
+export async function getConditions() {
+  if (API_BASE) {
+    try {
+      const res = await fetch(`${API_BASE}/conditions`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('AWS API unreachable, using local conditions mock:', e);
     }
-    return JSON.parse(raw);
-  } catch (err) {
-    return SAMPLE_REPORTS;
   }
+
+  return {
+    location: 'Park Street, Delhi',
+    tempActual: 36,
+    tempFeelsLike: 42,
+    humidity: '62%',
+    condition: 'Sunny',
+    riskLevel: 'High heat risk',
+    advisoryBold: "It's a hot afternoon. Take it a little easier.",
+    advisoryText: 'Limit time in direct sun, drink water regularly, and take breaks somewhere cool.',
+    hourly: HOURLY_FORECAST,
+  };
 }
 
-function saveReports(reports) {
-  try {
-    localStorage.setItem(STORAGE_KEY_REPORTS, JSON.stringify(reports));
-  } catch (e) {
-    console.error('Failed to save reports to localStorage:', e);
-  }
-}
-
-function getStoredWaterPoints() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_WATER_POINTS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY_WATER_POINTS, JSON.stringify(SAMPLE_WATER_POINTS));
-      return SAMPLE_WATER_POINTS;
+/**
+ * Fetch nearby cooling and water places
+ */
+export async function getPlaces() {
+  if (API_BASE) {
+    try {
+      const res = await fetch(`${API_BASE}/places`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('AWS API unreachable, using local places mock:', e);
     }
-    return JSON.parse(raw);
-  } catch (err) {
-    return SAMPLE_WATER_POINTS;
   }
+
+  return localPlaces;
 }
 
-function saveWaterPoints(waterPoints) {
-  try {
-    localStorage.setItem(STORAGE_KEY_WATER_POINTS, JSON.stringify(waterPoints));
-  } catch (e) {
-    console.error('Failed to save water points to localStorage:', e);
+/**
+ * Fetch Water Points with Distance & Report Reactions
+ */
+export async function getWaterPoints(userLat = 28.6139, userLng = 77.2090, radiusMeters = 2000) {
+  if (API_BASE) {
+    try {
+      const res = await fetch(`${API_BASE}/water-points?lat=${userLat}&lng=${userLng}&radius=${radiusMeters}`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('AWS API unreachable, using local water points mock:', e);
+    }
   }
-}
 
-/** Convert File object to Base64 string */
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    if (!file) return resolve(null);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
+  // Calculate distance, walk time, and report reactions for each water point
+  const processed = localWaterPoints.map((wp) => {
+    const distMeters = calculateHaversineDistance(userLat, userLng, wp.lat, wp.lng);
+    const walkTime = calculateWalkTime(distMeters);
+
+    // Check if any recent active report is within 50 meters of this water point
+    let activeStatus = wp.status;
+    let reportedByNeighbours = false;
+
+    const nearbyReport = localReports.find((r) => {
+      if (r.status === 'resolved') return false;
+      const reportDist = calculateHaversineDistance(wp.lat, wp.lng, r.lat, r.lng);
+      return reportDist <= 100 && (r.issueType === 'no-water' || r.issueType === 'broken-tap' || r.issueType === 'dirty-water');
+    });
+
+    if (nearbyReport) {
+      reportedByNeighbours = true;
+      if (nearbyReport.issueType === 'no-water' || nearbyReport.issueType === 'broken-tap') {
+        activeStatus = 'Not working';
+      } else if (nearbyReport.issueType === 'dirty-water') {
+        activeStatus = 'Low flow';
+      }
+    }
+
+    // Humanized "last confirmed"
+    const minutesAgo = Math.round((Date.now() - new Date(wp.lastConfirmed).getTime()) / (1000 * 60));
+    const timeAgoLabel = minutesAgo < 1 ? 'Just now' : `${minutesAgo} min ago`;
+
+    return {
+      ...wp,
+      status: activeStatus,
+      distanceMeters: distMeters,
+      distanceLabel: distMeters >= 1000 ? `${(distMeters / 1000).toFixed(1)} km` : `${distMeters} m`,
+      walkTime,
+      reportedByNeighbours,
+      timeAgoLabel,
+    };
   });
+
+  // Filter within radius & sort by nearest distance
+  const inRadius = processed.filter(wp => wp.distanceMeters <= radiusMeters);
+  inRadius.sort((a, b) => a.distanceMeters - b.distanceMeters);
+
+  return inRadius;
 }
 
-// ─── API Methods ─────────────────────────────────────────────────────────────
+/**
+ * Confirm/Update Water Point Status (Quick Action)
+ */
+export async function confirmWaterPointStatus(waterPointId, newStatus) {
+  const target = localWaterPoints.find(w => w.id === waterPointId);
+  if (target) {
+    target.status = newStatus;
+    target.confirmations = (target.confirmations || 0) + 1;
+    target.lastConfirmed = new Date().toISOString();
+  }
 
-export async function fetchReports() {
-  await delay(200);
-  return getStoredReports();
-}
-
-export async function fetchWaterPoints() {
-  await delay(200);
-  return getStoredWaterPoints();
-}
-
-export async function submitReport({ issueType, description, lat, lng, photo, address }) {
-  await delay(400);
-
-  let photoUrl = null;
-  if (photo) {
+  if (API_BASE) {
     try {
-      photoUrl = await fileToBase64(photo);
+      await fetch(`${API_BASE}/water-points/${waterPointId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
     } catch (e) {
-      console.warn('Could not encode photo:', e);
+      console.warn('AWS confirm water point status failed:', e);
     }
   }
 
-  // Attempt reverse geocoding if address not supplied
-  let finalAddress = address || '';
-  if (!finalAddress && lat && lng) {
+  return target;
+}
+
+/**
+ * Fetch community incident reports
+ */
+export async function getReports() {
+  if (API_BASE) {
     try {
-      finalAddress = await reverseGeocode(lat, lng);
+      const res = await fetch(`${API_BASE}/reports`);
+      if (res.ok) return await res.json();
     } catch (e) {
-      finalAddress = `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+      console.warn('AWS API unreachable, using local reports mock:', e);
     }
   }
 
-  const reports = getStoredReports();
+  return localReports;
+}
+
+/**
+ * Submit a new community report (also triggers water point status reaction!)
+ */
+export async function submitReport(reportData) {
+  const newId = `HS-${Math.floor(1000 + Math.random() * 9000)}`;
+
   const newReport = {
-    id: `rpt-${Date.now()}`,
-    issueType,
-    description,
-    address: finalAddress || 'Delhi Area',
-    lat: parseFloat(lat),
-    lng: parseFloat(lng),
-    photoUrl,
-    status: 'open',
-    upvotes: 1,
-    officialNote: '',
+    id: newId,
+    category: reportData.category || 'water',
+    issueType: reportData.issueType || 'broken-tap',
+    title: reportData.title || reportData.description || 'Community reported issue',
+    locationName: reportData.locationName || 'Delhi Neighbourhood',
+    lat: reportData.lat || 28.6139,
+    lng: reportData.lng || 77.2090,
+    urgency: reportData.urgency || 'serious',
+    urgencyLabel: reportData.urgency === 'urgent' ? 'Urgent' : reportData.urgency === 'minor' ? 'Minor' : 'Serious',
+    status: 'new',
+    statusLabel: 'New',
+    timeAgo: 'Just now',
     timestamp: new Date().toISOString(),
+    confirmations: 1,
+    description: reportData.description || '',
+    photo: reportData.photo || null,
+    _mock: !API_BASE,
   };
 
-  const updated = [newReport, ...reports];
-  saveReports(updated);
+  if (API_BASE) {
+    try {
+      const res = await fetch(`${API_BASE}/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newReport),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        localReports.unshift(saved);
+        return saved;
+      }
+    } catch (e) {
+      console.warn('AWS API post failed, storing locally:', e);
+    }
+  }
+
+  localReports.unshift(newReport);
   return newReport;
 }
 
-export async function updateReportStatus(id, status, officialNote = '') {
-  await delay(200);
-  const reports = getStoredReports();
-  const updated = reports.map(r => {
-    if (r.id === id) {
-      return {
-        ...r,
-        status,
-        officialNote: officialNote !== undefined ? officialNote : r.officialNote,
-      };
-    }
-    return r;
-  });
-  saveReports(updated);
-  return updated;
-}
-
-export async function upvoteReport(id) {
-  await delay(100);
-  const reports = getStoredReports();
-  const updated = reports.map(r => {
-    if (r.id === id) {
-      return { ...r, upvotes: (r.upvotes || 0) + 1 };
-    }
-    return r;
-  });
-  saveReports(updated);
-  return updated;
-}
-
-export async function deleteReport(id) {
-  await delay(100);
-  const reports = getStoredReports();
-  const updated = reports.filter(r => r.id !== id);
-  saveReports(updated);
-  return updated;
-}
-
-export async function addWaterPoint({ name, type, lat, lng, status, address }) {
-  await delay(200);
-  const points = getStoredWaterPoints();
-  const newPoint = {
-    id: `wp-${Date.now()}`,
-    name,
-    type,
-    lat: parseFloat(lat),
-    lng: parseFloat(lng),
-    status,
-    address: address || 'Delhi',
-  };
-  const updated = [newPoint, ...points];
-  saveWaterPoints(updated);
-  return updated;
-}
-
-export async function updateWaterPointStatus(id, newStatus) {
-  await delay(100);
-  const points = getStoredWaterPoints();
-  const updated = points.map(p => (p.id === id ? { ...p, status: newStatus } : p));
-  saveWaterPoints(updated);
-  return updated;
-}
-
-/** Nominatim OpenStreetMap Free Reverse Geocoding */
-export async function reverseGeocode(lat, lng) {
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16`);
-    if (!res.ok) return `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
-    const data = await res.json();
-    if (data && data.display_name) {
-      const parts = data.display_name.split(',');
-      return parts.slice(0, 3).join(', ');
-    }
-    return `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
-  } catch (e) {
-    return `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+/**
+ * Increment "I see this too" confirmation count on a report
+ */
+export async function confirmReport(reportId) {
+  const target = localReports.find(r => r.id === reportId);
+  if (target) {
+    target.confirmations = (target.confirmations || 0) + 1;
   }
+
+  if (API_BASE) {
+    try {
+      await fetch(`${API_BASE}/reports/${reportId}/confirm`, { method: 'POST' });
+    } catch (e) {
+      console.warn('AWS confirm endpoint fallback:', e);
+    }
+  }
+
+  return target ? target.confirmations : 1;
 }

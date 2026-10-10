@@ -1,204 +1,151 @@
-import { useState } from 'react';
+import { Droplets, Moon, Shield, Sun } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { Droplets, Globe, Menu, ShieldCheck, ThermometerSnowflake, X } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
 
-export default function Navbar() {
+export default function Navbar({ theme, toggleTheme }) {
   const { pathname } = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { lang, toggleLanguage, t } = useLanguage();
 
-  const navLinks = [
-    { to: '/',       label: t('dashboard') },
-    { to: '/report', label: t('reportProblem') },
-    { to: '/cooling-centers', label: t('coolingShelters'), icon: ThermometerSnowflake },
-    { to: '/admin',  label: t('adminPortal'), icon: ShieldCheck },
+  const navItems = [
+    { to: '/',       label: 'Dashboard' },
+    { to: '/report', label: 'Report Water Issue' },
   ];
 
   return (
     <header style={{
-      background: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)',
-      color: '#fff',
+      backgroundColor: 'var(--brand-navy)',
+      color: '#ffffff',
       position: 'sticky',
       top: 0,
       zIndex: 1000,
-      boxShadow: '0 2px 16px rgba(27,67,50,0.35)',
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
+      boxShadow: 'var(--shadow-md)',
     }}>
       <div style={{
         maxWidth: 1240,
         margin: '0 auto',
-        padding: '0 1.5rem',
+        padding: '0 1rem',
+        height: 64,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: 64,
       }}>
-        {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: '#fff' }}>
+        {/* Brand Logo & Name */}
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: '#ffffff' }}>
           <div style={{
-            background: 'linear-gradient(135deg, #74c69d, #52b788)',
-            borderRadius: 10,
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'var(--brand-aqua)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            color: '#0f2e35',
+            boxShadow: '0 2px 8px rgba(0,168,150,0.4)',
           }}>
-            <Droplets size={20} color="#1b4332" strokeWidth={2.5} />
+            <Shield size={22} strokeWidth={2.5} />
           </div>
           <div>
-            <span style={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.03em' }}>
-              Heat<span style={{ color: '#74c69d' }}>Shield</span>
-            </span>
-            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: -2 }}>
-              {t('subTitle')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
+                Heat<span style={{ color: 'var(--brand-aqua)' }}>Shield</span>
+              </span>
+              <span style={{
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: 4,
+                backgroundColor: 'rgba(0,168,150,0.2)',
+                color: 'var(--brand-aqua)',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+              }}>
+                Delhi
+              </span>
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.65)', fontWeight: 500 }}>
+              Heat &amp; Water Resilience
             </div>
           </div>
         </Link>
 
-        {/* Desktop nav */}
-        <nav style={{ display: 'flex', gap: 6, alignItems: 'center' }} className="hs-desktop-nav">
-          {navLinks.map(({ to, label, icon: Icon }) => {
-            const active = pathname === to;
-            return (
-              <Link
-                key={to}
-                to={to}
-                id={`nav-${label.replace(/\s+/g, '-').toLowerCase()}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '7px 14px',
-                  borderRadius: 8,
-                  textDecoration: 'none',
-                  fontSize: '0.86rem',
-                  fontWeight: active ? 700 : 500,
-                  color: active ? '#fff' : 'rgba(255,255,255,0.75)',
-                  background: active ? 'rgba(255,255,255,0.18)' : 'transparent',
-                  border: active ? '1px solid rgba(255,255,255,0.3)' : '1px solid transparent',
-                  transition: 'all 0.18s ease',
-                }}
-              >
-                {Icon && <Icon size={14} color={active ? '#74c69d' : 'rgba(255,255,255,0.7)'} />}
-                {label}
-              </Link>
-            );
-          })}
+        {/* Desktop Navigation & Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <nav style={{ display: 'none' }} className="md-nav">
+            {navItems.map(({ to, label }) => {
+              const active = pathname === to;
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '0.9rem',
+                    fontWeight: active ? 700 : 500,
+                    color: active ? '#ffffff' : 'rgba(255,255,255,0.75)',
+                    backgroundColor: active ? 'rgba(255,255,255,0.12)' : 'transparent',
+                    textDecoration: 'none',
+                    transition: 'all var(--transition-fast)',
+                    marginRight: 4,
+                  }}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
 
-          {/* Language Selector Button */}
+          {/* Theme Toggle Button */}
           <button
-            onClick={toggleLanguage}
-            title="Switch Language (English / हिंदी)"
+            onClick={toggleTheme}
+            id="theme-toggle-btn"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             style={{
+              width: 42,
+              height: 42,
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
-              padding: '6px 12px',
-              borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.3)',
-              backgroundColor: 'rgba(0,0,0,0.2)',
-              color: '#fff',
+              justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              marginLeft: 4,
+              transition: 'all var(--transition-fast)',
             }}
           >
-            <Globe size={14} color="#74c69d" />
-            {lang === 'en' ? '🇮🇳 हिंदी' : '🇬🇧 English'}
+            {theme === 'dark' ? <Sun size={20} color="#f4d35e" /> : <Moon size={20} color="#e0f7f5" />}
           </button>
 
-          {/* CTA button */}
+          {/* Direct CTA button (Desktop) */}
           <Link
             to="/report"
-            id="nav-cta-report"
+            className="md-cta"
             style={{
-              marginLeft: 8,
-              padding: '8px 18px',
-              borderRadius: 8,
+              padding: '9px 18px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'var(--brand-aqua)',
+              color: '#0f2e35',
+              fontWeight: 700,
+              fontSize: '0.88rem',
               textDecoration: 'none',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              color: '#fff',
-              background: 'linear-gradient(135deg, #e76f51, #d4602a)',
-              boxShadow: '0 2px 10px rgba(231,111,81,0.4)',
-              transition: 'opacity 0.18s',
+              display: 'none',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 2px 10px rgba(0,168,150,0.3)',
+              transition: 'transform var(--transition-fast)',
             }}
           >
-            + {t('reportProblem')}
+            <Droplets size={16} />
+            Report Problem
           </Link>
-        </nav>
-
-        {/* Mobile controls */}
-        <div style={{ display: 'none', alignItems: 'center', gap: 8 }} className="hs-mobile-controls">
-          <button
-            onClick={toggleLanguage}
-            style={{
-              padding: '5px 10px',
-              borderRadius: 6,
-              border: '1px solid rgba(255,255,255,0.3)',
-              backgroundColor: 'rgba(0,0,0,0.2)',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-            }}
-          >
-            {lang === 'en' ? '🇮🇳 हिंदी' : '🇬🇧 EN'}
-          </button>
-          
-          <button
-            id="nav-mobile-menu-toggle"
-            onClick={() => setMenuOpen(!menuOpen)}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
         </div>
       </div>
 
-      {/* Mobile dropdown */}
-      {menuOpen && (
-        <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.12)',
-          padding: '0.75rem 1.5rem 1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-          backgroundColor: '#1b4332',
-        }}>
-          {navLinks.map(({ to, label, icon: Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              onClick={() => setMenuOpen(false)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 12px',
-                borderRadius: 8,
-                color: pathname === to ? '#74c69d' : 'rgba(255,255,255,0.85)',
-                textDecoration: 'none',
-                fontWeight: pathname === to ? 700 : 500,
-                fontSize: '0.92rem',
-                background: pathname === to ? 'rgba(255,255,255,0.08)' : 'transparent',
-              }}
-            >
-              {Icon && <Icon size={16} />}
-              {label}
-            </Link>
-          ))}
-        </div>
-      )}
-
       <style>{`
-        @media (max-width: 840px) {
-          .hs-desktop-nav { display: none !important; }
-          .hs-mobile-controls { display: flex !important; }
+        @media (min-width: 768px) {
+          .md-nav { display: flex !important; }
+          .md-cta { display: flex !important; }
         }
       `}</style>
     </header>
