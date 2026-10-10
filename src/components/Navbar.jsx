@@ -13,70 +13,100 @@ export default function Navbar() {
 
   return (
     <header style={{
-      backgroundColor: 'var(--color-forest-dk)',
+      background: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)',
       color: '#fff',
-      padding: '0 1.5rem',
       position: 'sticky',
       top: 0,
       zIndex: 1000,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+      boxShadow: '0 2px 16px rgba(27,67,50,0.35)',
     }}>
       <div style={{
-        maxWidth: 1200,
+        maxWidth: 1240,
         margin: '0 auto',
+        padding: '0 1.5rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: 60,
+        height: 64,
       }}>
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: '#fff' }}>
           <div style={{
-            backgroundColor: 'var(--color-leaf)',
-            borderRadius: 8,
-            width: 36,
-            height: 36,
+            background: 'linear-gradient(135deg, #74c69d, #52b788)',
+            borderRadius: 10,
+            width: 38,
+            height: 38,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}>
-            <Droplets size={20} color="#1b4332" />
+            <Droplets size={20} color="#1b4332" strokeWidth={2.5} />
           </div>
-          <span style={{ fontWeight: 700, fontSize: '1.15rem', letterSpacing: '-0.02em' }}>
-            Heat<span style={{ color: 'var(--color-leaf)' }}>Shield</span>
-          </span>
+          <div>
+            <span style={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.03em' }}>
+              Heat<span style={{ color: '#74c69d' }}>Shield</span>
+            </span>
+            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.55)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: -2 }}>
+              Delhi Heat &amp; Water
+            </div>
+          </div>
         </Link>
 
         {/* Desktop nav */}
-        <nav style={{ display: 'flex', gap: 8 }} className="desktop-nav">
-          {navLinks.map(({ to, label }) => (
-            <Link
-              key={to}
-              to={to}
-              id={`nav-${label.replace(/\s+/g, '-').toLowerCase()}`}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 6,
-                textDecoration: 'none',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                color: pathname === to ? '#fff' : 'rgba(255,255,255,0.75)',
-                backgroundColor: pathname === to ? 'rgba(255,255,255,0.15)' : 'transparent',
-                transition: 'background 0.2s',
-              }}
-            >
-              {label}
-            </Link>
-          ))}
+        <nav style={{ display: 'flex', gap: 4, alignItems: 'center' }} className="hs-desktop-nav">
+          {navLinks.map(({ to, label }) => {
+            const active = pathname === to;
+            return (
+              <Link
+                key={to}
+                to={to}
+                id={`nav-${label.replace(/\s+/g, '-').toLowerCase()}`}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: active ? 700 : 500,
+                  color: active ? '#fff' : 'rgba(255,255,255,0.7)',
+                  background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
+                  border: active ? '1px solid rgba(255,255,255,0.25)' : '1px solid transparent',
+                  transition: 'all 0.18s ease',
+                }}
+              >
+                {label}
+              </Link>
+            );
+          })}
+
+          {/* CTA button */}
+          <Link
+            to="/report"
+            id="nav-cta-report"
+            style={{
+              marginLeft: 8,
+              padding: '8px 20px',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              color: '#fff',
+              background: 'linear-gradient(135deg, #e76f51, #d4a843)',
+              boxShadow: '0 2px 8px rgba(231,111,81,0.4)',
+              transition: 'opacity 0.18s',
+            }}
+          >
+            + Report
+          </Link>
         </nav>
 
         {/* Mobile hamburger */}
         <button
           id="nav-mobile-menu-toggle"
           onClick={() => setMenuOpen(!menuOpen)}
-          style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'none' }}
+          style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'none', padding: 4 }}
           aria-label="Toggle menu"
-          className="mobile-menu-btn"
+          className="hs-mobile-btn"
         >
           {menuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -85,8 +115,11 @@ export default function Navbar() {
       {/* Mobile dropdown */}
       {menuOpen && (
         <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.15)',
-          paddingBottom: 12,
+          borderTop: '1px solid rgba(255,255,255,0.12)',
+          padding: '0.75rem 1.5rem 1rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
         }}>
           {navLinks.map(({ to, label }) => (
             <Link
@@ -95,11 +128,13 @@ export default function Navbar() {
               onClick={() => setMenuOpen(false)}
               style={{
                 display: 'block',
-                padding: '10px 0',
-                color: pathname === to ? 'var(--color-leaf)' : 'rgba(255,255,255,0.85)',
+                padding: '10px 12px',
+                borderRadius: 8,
+                color: pathname === to ? '#74c69d' : 'rgba(255,255,255,0.85)',
                 textDecoration: 'none',
-                fontWeight: 500,
+                fontWeight: pathname === to ? 700 : 500,
                 fontSize: '0.95rem',
+                background: pathname === to ? 'rgba(255,255,255,0.08)' : 'transparent',
               }}
             >
               {label}
@@ -109,9 +144,9 @@ export default function Navbar() {
       )}
 
       <style>{`
-        @media (max-width: 600px) {
-          .desktop-nav { display: none !important; }
-          .mobile-menu-btn { display: block !important; }
+        @media (max-width: 640px) {
+          .hs-desktop-nav { display: none !important; }
+          .hs-mobile-btn  { display: block !important; }
         }
       `}</style>
     </header>

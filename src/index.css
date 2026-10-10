@@ -1,32 +1,108 @@
 @import "tailwindcss";
 
+/* ── Google Font ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ── Design Tokens ── */
 :root {
-  --color-forest:     #2d6a4f;
-  --color-forest-dk:  #1b4332;
-  --color-forest-lt:  #52b788;
-  --color-leaf:       #74c69d;
-  --color-offwhite:   #f8f9f4;
-  --color-card:       #ffffff;
-  --color-border:     #e2e8e0;
-  --color-text:       #1c2b22;
-  --color-muted:      #5a7a66;
-  --color-accent:     #e76f51;
-  --color-warn:       #f4a261;
-  --color-danger:     #d62828;
-  --color-low:        #52b788;
-  --color-moderate:   #f4a261;
-  --color-high:       #e76f51;
-  --color-severe:     #d62828;
+  --forest:       #2d6a4f;
+  --forest-dk:    #1b4332;
+  --forest-md:    #40916c;
+  --forest-lt:    #52b788;
+  --leaf:         #74c69d;
+  --leaf-lt:      #b7e4c7;
+
+  --offwhite:     #f4f7f5;
+  --card:         #ffffff;
+  --border:       #dde8e2;
+  --border-lt:    #eef4f0;
+
+  --text:         #172b22;
+  --text-md:      #2e4a3a;
+  --muted:        #5e7a6b;
+  --muted-lt:     #8aa898;
+
+  --accent:       #e76f51;
+  --accent-lt:    #f4a27e;
+  --warn:         #f4a261;
+  --danger:       #c1121f;
+
+  --low:          #52b788;
+  --moderate:     #f4a261;
+  --high:         #e76f51;
+  --severe:       #c1121f;
+
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md:    0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg:    0 10px 30px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
+
+  --radius-sm:    8px;
+  --radius-md:    12px;
+  --radius-lg:    16px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background-color: var(--color-offwhite);
-  color: var(--color-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--offwhite);
+  color: var(--text);
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Leaflet z-index fix */
+/* ── Leaflet z-index fix ── */
 .leaflet-container { z-index: 0; }
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-popup-pane,
+.leaflet-control { z-index: 0 !important; }
+.leaflet-top, .leaflet-bottom { z-index: 1 !important; }
+.leaflet-popup { z-index: 2 !important; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-lt); }
+
+/* ── Focus rings ── */
+:focus-visible {
+  outline: 2px solid var(--forest-lt);
+  outline-offset: 2px;
+}
+
+/* ── Skeleton shimmer ── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--border-lt) 25%, #e8f0ec 50%, var(--border-lt) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Fade-in ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.35s ease both; }
+
+/* ── Pulse dot ── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+.pulse-dot { animation: pulse-dot 1.8s ease-in-out infinite; }

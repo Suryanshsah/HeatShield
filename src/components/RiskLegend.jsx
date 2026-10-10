@@ -1,42 +1,60 @@
 const RISK_LEVELS = [
-  { label: 'Low',      color: 'var(--color-low)',      description: 'Safe for outdoor activity' },
-  { label: 'Moderate', color: 'var(--color-moderate)', description: 'Stay hydrated; take breaks' },
-  { label: 'High',     color: 'var(--color-high)',     description: 'Limit outdoor exposure' },
-  { label: 'Severe',   color: 'var(--color-severe)',   description: 'Avoid outdoor activity' },
+  { label: 'Low',      color: '#52b788', bg: '#e8f7ef', description: 'Safe for outdoor activity' },
+  { label: 'Moderate', color: '#f4a261', bg: '#fef3e6', description: 'Hydrate; take breaks' },
+  { label: 'High',     color: '#e76f51', bg: '#fdeee9', description: 'Limit outdoor exposure' },
+  { label: 'Severe',   color: '#c1121f', bg: '#fde8e8', description: 'Avoid outdoor activity' },
 ];
 
 export default function RiskLegend() {
   return (
     <div style={{
-      backgroundColor: 'var(--color-card)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 12,
-      padding: '1rem 1.25rem',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      backgroundColor: 'var(--card)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-md)',
+      boxShadow: 'var(--shadow-sm)',
+      overflow: 'hidden',
     }}>
-      <h3 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
-        Heat Risk Legend
-      </h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {RISK_LEVELS.map(({ label, color, description }) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{
+        padding: '0.75rem 1rem',
+        background: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)',
+        color: '#fff',
+      }}>
+        <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+          🌡 Heat Risk Legend
+        </h3>
+      </div>
+
+      <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {RISK_LEVELS.map(({ label, color, bg, description }) => (
+          <div key={label} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '6px 8px',
+            borderRadius: 8,
+            backgroundColor: bg,
+          }}>
             <div style={{
-              width: 14,
-              height: 14,
+              width: 12,
+              height: 12,
               borderRadius: 3,
               backgroundColor: color,
               flexShrink: 0,
+              boxShadow: `0 0 0 2px ${color}30`,
             }} />
             <div>
-              <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text)' }}>{label}</span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginLeft: 6 }}>{description}</span>
+              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: color }}>{label}</span>
+              <span style={{ fontSize: '0.74rem', color: 'var(--muted)', marginLeft: 5 }}>{description}</span>
             </div>
           </div>
         ))}
       </div>
-      <p style={{ marginTop: 12, fontSize: '0.72rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>
-        Zone colours are sample data and not scientifically validated.
-      </p>
+
+      <div style={{ padding: '0.5rem 1rem 0.75rem', borderTop: '1px solid var(--border-lt)' }}>
+        <p style={{ fontSize: '0.68rem', color: 'var(--muted-lt)', fontStyle: 'italic', lineHeight: 1.4 }}>
+          Zone colours are sample/illustrative data, not scientifically validated.
+        </p>
+      </div>
     </div>
   );
 }
