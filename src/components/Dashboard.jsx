@@ -1,4 +1,4 @@
-import { AlertTriangle, Droplets, MapPin, ThermometerSun, Zap } from 'lucide-react';
+import { AlertTriangle, Droplets, MapPin, ShieldAlert, Sun, ThermometerSun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HEAT_RISK_SUMMARY } from '../data/sampleData';
@@ -8,351 +8,237 @@ import RecentReports from './RecentReports';
 import RiskLegend from './RiskLegend';
 import StatCard from './StatCard';
 
-const RISK_ACCENT = {
-  Low:      '#52b788',
-  Moderate: '#f4a261',
-  High:     '#e76f51',
-  Severe:   '#c1121f',
-};
-
-const RISK_BG = {
-  Low:      '#e8f7ef',
-  Moderate: '#fef3e6',
-  High:     '#fdeee9',
-  Severe:   '#fde8e8',
-};
-
-function SkeletonCard() {
-  return (
-    <div style={{
-      flex: '1 1 200px', minWidth: 0,
-      backgroundColor: 'var(--card)',
-      borderRadius: 'var(--radius-lg)',
-      padding: '1.4rem 1.5rem',
-      border: '1px solid var(--border)',
-      display: 'flex', flexDirection: 'column', gap: 12,
-    }}>
-      <div className="skeleton" style={{ width: 40, height: 40, borderRadius: 10 }} />
-      <div className="skeleton" style={{ width: '60%', height: 14, borderRadius: 4 }} />
-      <div className="skeleton" style={{ width: '40%', height: 32, borderRadius: 6 }} />
-    </div>
-  );
-}
-
 export default function Dashboard({ localReports = [] }) {
-  const [waterPoints,    setWaterPoints]    = useState([]);
+  const [waterPoints, setWaterPoints] = useState([]);
   const [fetchedReports, setFetchedReports] = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [fetchError,     setFetchError]     = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    let active = true;
+    let isMounted = true;
     setLoading(true);
+
     Promise.all([fetchWaterPoints(), fetchReports()])
       .then(([wps, rpts]) => {
-        if (!active) return;
+        if (!isMounted) return;
         setWaterPoints(wps);
         setFetchedReports(rpts);
       })
-      .catch((err) => { if (active) setFetchError(err.message); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .catch((err) => {
+        if (isMounted) setError(err.message);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
   }, []);
 
-  const fetchedIds = new Set(fetchedReports.map((r) => r.id));
-  const newLocal   = localReports.filter((r) => !fetchedIds.has(r.id));
-  const reports    = [...newLocal, ...fetchedReports];
+  // Merge local new submissions seamlessly
+  const fetchedIds = new Set(fetchedReports.map(r => r.id));
+  const newLocal = localReports.filter(r => !fetchedIds.has(r.id));
+  const allReports = [...newLocal, ...fetchedReports];
 
-  const openCount   = reports.filter((r) => r.status === 'open').length;
-  const brokenCount = waterPoints.filter((w) => w.status === 'broken').length;
-  const riskLevel   = HEAT_RISK_SUMMARY.level;
-  const riskAccent  = RISK_ACCENT[riskLevel] || '#e76f51';
-  const riskBg      = RISK_BG[riskLevel]     || '#fdeee9';
+  const openIncidentsCount = allReports.filter(r => r.status === 'open').length;
+  const brokenWaterPoints = waterPoints.filter(w => w.status === 'broken').length;
 
-  const isMockMode = !import.meta.env.VITE_API_URL;
+  // Heat risk badge styling (reserved heat colors)
+  const heatVariant = 'heat-high';
 
   return (
-    <main style={{ maxWidth: 1240, margin: '0 auto', padding: '1.75rem 1.25rem' }}>
+    <main style={{ maxWidth: 1240, margin: '0 auto', padding: '1.25rem 1rem' }} className="animate-fade-in">
 
-      {/* ── Hero header ── */}
-      <div className="fade-up" style={{
-        background: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 60%, #40916c 100%)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '1.75rem 2rem',
+      {/* ── Civic Hero Banner ── */}
+      <div style={{
+        backgroundColor: 'var(--brand-navy)',
+        color: '#ffffff',
+        borderRadius: 'var(--radius-xl)',
+        padding: '1.75rem',
         marginBottom: '1.5rem',
-        color: '#fff',
+        boxShadow: 'var(--shadow-md)',
         display: 'flex',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: 16,
-        boxShadow: '0 6px 24px rgba(27,67,50,0.25)',
-        position: 'relative',
-        overflow: 'hidden',
+        borderLeft: '6px solid var(--brand-aqua)',
       }}>
-        {/* Decorative rings */}
-        <div style={{ position: 'absolute', right: -40, top: -40, width: 200, height: 200, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', right: -10, top: -10, width: 130, height: 130, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
-
-        <div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 6 }}>
-            Community Dashboard
+        <div style={{ maxWidth: 640 }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            borderRadius: 99,
+            backgroundColor: 'rgba(0,168,150,0.18)',
+            color: 'var(--brand-aqua)',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            marginBottom: 10,
+          }}>
+            <ShieldAlert size={14} />
+            <span>Civic Environmental Resilience Platform</span>
+          </div>
+          <h1 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.025em', marginBottom: 6 }}>
+            Delhi Heat Risk &amp; Water Access Monitor
           </h1>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.75)', maxWidth: 480 }}>
-            Delhi heat-risk overview and water-access status.{' '}
-            <em style={{ color: 'rgba(255,255,255,0.5)' }}>Sample data — not verified or real-time.</em>
+          <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
+            Real-time heat hazards overview and community water access point tracking.
           </p>
         </div>
 
-        {/* Mode pill */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 16px',
-          borderRadius: 99,
-          backgroundColor: isMockMode ? 'rgba(244,162,97,0.2)' : 'rgba(82,183,136,0.2)',
-          border: `1px solid ${isMockMode ? 'rgba(244,162,97,0.4)' : 'rgba(82,183,136,0.4)'}`,
-        }}>
-          <span className="pulse-dot" style={{
-            display: 'inline-block',
-            width: 7,
-            height: 7,
-            borderRadius: '50%',
-            backgroundColor: isMockMode ? '#f4a261' : '#52b788',
-          }} />
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>
-            {isMockMode ? 'Demo Mode — AWS not connected' : 'Live — AWS Connected'}
-          </span>
-          <Zap size={13} color={isMockMode ? '#f4a261' : '#52b788'} />
-        </div>
+        <Link
+          to="/report"
+          style={{
+            minHeight: 48,
+            padding: '12px 24px',
+            backgroundColor: 'var(--brand-aqua)',
+            color: '#0f2e35',
+            borderRadius: 'var(--radius-md)',
+            fontWeight: 800,
+            fontSize: '0.95rem',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            boxShadow: '0 4px 14px rgba(0,168,150,0.4)',
+          }}
+        >
+          <MapPin size={18} />
+          Report Water Problem
+        </Link>
       </div>
 
-      {/* ── Error banner ── */}
-      {fetchError && (
+      {/* Error alert */}
+      {error && (
         <div style={{
-          padding: '10px 16px',
-          backgroundColor: '#fde8e8',
-          border: '1px solid #c1121f33',
-          borderRadius: 'var(--radius-sm)',
-          color: 'var(--danger)',
-          fontSize: '0.85rem',
+          padding: '12px 16px',
+          borderRadius: 'var(--radius-md)',
+          backgroundColor: 'var(--status-err-bg)',
+          color: 'var(--status-err)',
+          fontWeight: 700,
+          fontSize: '0.88rem',
           marginBottom: '1.25rem',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
         }}>
-          <AlertTriangle size={16} />
-          Could not load data: {fetchError}
+          <AlertTriangle size={18} />
+          Error fetching monitoring data: {error}
         </div>
       )}
 
-      {/* ── Stat cards ── */}
-      <section aria-label="Summary statistics" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-        {loading ? (
-          <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
-        ) : (
-          <>
-            <StatCard
-              id="stat-heat-risk"
-              icon={ThermometerSun}
-              label="Heat Risk Level"
-              value={riskLevel}
-              subtitle={`${HEAT_RISK_SUMMARY.feelsLike} feels-like · sample`}
-              accentColor={riskAccent}
-            />
-            <StatCard
-              id="stat-water-points"
-              icon={Droplets}
-              label="Water Points"
-              value={waterPoints.length}
-              subtitle={`${brokenCount} reported broken`}
-              accentColor="var(--forest)"
-            />
-            <StatCard
-              id="stat-open-incidents"
-              icon={AlertTriangle}
-              label="Open Incidents"
-              value={openCount}
-              subtitle={`${reports.length} total reports`}
-              accentColor="var(--accent)"
-            />
-          </>
-        )}
+      {/* ── Stat Cards Grid ── */}
+      <section aria-label="Key Metrics" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: 14,
+        marginBottom: '1.5rem',
+      }}>
+        <StatCard
+          id="stat-heat-risk"
+          icon={ThermometerSun}
+          label="Heat Hazard Status"
+          value={HEAT_RISK_SUMMARY.level}
+          subtitle={`${HEAT_RISK_SUMMARY.tempFeelsLike} Feels Like (Delhi)`}
+          badgeText="High Heat Advisory"
+          badgeIcon={Sun}
+          badgeVariant={heatVariant}
+        />
+
+        <StatCard
+          id="stat-water-points"
+          icon={Droplets}
+          label="Active Water Access"
+          value={loading ? '...' : waterPoints.length}
+          subtitle={`${brokenWaterPoints} currently reported out of service`}
+          badgeText="Community Points"
+          badgeIcon={Droplets}
+          badgeVariant="aqua"
+        />
+
+        <StatCard
+          id="stat-open-incidents"
+          icon={AlertTriangle}
+          label="Open Water Issues"
+          value={loading ? '...' : openIncidentsCount}
+          subtitle={`${allReports.length} total logged incidents`}
+          badgeText="Requires Action"
+          badgeIcon={AlertTriangle}
+          badgeVariant="neutral"
+        />
       </section>
 
-      {/* ── Heat advisory banner ── */}
-      {!loading && (
-        <div className="fade-up" style={{
-          backgroundColor: riskBg,
-          border: `1px solid ${riskAccent}40`,
-          borderLeft: `4px solid ${riskAccent}`,
-          borderRadius: 'var(--radius-md)',
-          padding: '0.9rem 1.2rem',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 12,
-        }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 8,
-            backgroundColor: `${riskAccent}20`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <ThermometerSun size={18} color={riskAccent} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: riskAccent, marginBottom: 2 }}>
-              Heat Advisory — {riskLevel} Risk
-            </div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-md)' }}>{HEAT_RISK_SUMMARY.advisory}</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
-              {HEAT_RISK_SUMMARY.disclaimer}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Map + Sidebar ── */}
-      <section aria-label="Heat risk map" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 14, marginBottom: '1.5rem' }}>
-        <div style={{ minWidth: 0 }}>
-          {loading
-            ? <div className="skeleton" style={{ height: 450, borderRadius: 'var(--radius-lg)' }} />
-            : <HeatRiskMap waterPoints={waterPoints} />
-          }
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <RiskLegend />
-
-          {/* Water status breakdown */}
-          <div style={{
-            backgroundColor: 'var(--card)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            overflow: 'hidden',
-            boxShadow: 'var(--shadow-sm)',
-          }}>
-            <div style={{
-              padding: '0.65rem 1rem',
-              background: 'linear-gradient(to right, var(--border-lt), var(--card))',
-              borderBottom: '1px solid var(--border)',
-            }}>
-              <h3 style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                💧 Water Status
-              </h3>
-            </div>
-            <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { status: 'operational', label: 'Operational', color: '#52b788', bg: '#e8f7ef' },
-                { status: 'low-supply',  label: 'Low Supply',  color: '#f4a261', bg: '#fef3e6' },
-                { status: 'broken',      label: 'Broken',      color: '#c1121f', bg: '#fde8e8' },
-              ].map(({ status, label, color, bg }) => {
-                const count = waterPoints.filter((w) => w.status === status).length;
-                const pct   = waterPoints.length ? Math.round(count / waterPoints.length * 100) : 0;
-                return (
-                  <div key={status}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.82rem' }}>
-                      <span style={{ color: 'var(--text-md)', fontWeight: 500 }}>{label}</span>
-                      <span style={{ fontWeight: 700, color }}>{loading ? '—' : count}</span>
-                    </div>
-                    <div style={{ height: 5, borderRadius: 99, backgroundColor: bg, overflow: 'hidden' }}>
-                      <div style={{
-                        width: loading ? '0%' : `${pct}%`,
-                        height: '100%',
-                        backgroundColor: color,
-                        borderRadius: 99,
-                        transition: 'width 0.6s ease',
-                      }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Quick CTA */}
-          <Link
-            to="/report"
-            id="cta-report-problem"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '13px 20px',
-              background: 'linear-gradient(135deg, #e76f51, #d4602a)',
-              color: '#fff',
-              borderRadius: 'var(--radius-md)',
-              textDecoration: 'none',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              boxShadow: '0 4px 14px rgba(231,111,81,0.35)',
-              textAlign: 'center',
-              transition: 'opacity 0.2s, transform 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = 0.92; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = 1;    e.currentTarget.style.transform = 'translateY(0)'; }}
-          >
-            <MapPin size={17} />
-            Report a Problem
-          </Link>
-        </div>
-      </section>
-
-      {/* ── Recent Reports ── */}
-      <section aria-label="Recent reports" style={{ marginBottom: '2.5rem' }}>
-        <RecentReports reports={reports} />
-      </section>
-
-      {/* ── AWS Integration Status Banner ── */}
+      {/* ── Active Advisory Banner ── */}
       <div style={{
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
-        overflow: 'hidden',
-        marginBottom: '1rem',
+        backgroundColor: 'var(--heat-high-bg)',
+        border: '1px solid var(--heat-high)',
+        borderRadius: 'var(--radius-xl)',
+        padding: '1.25rem 1.5rem',
+        marginBottom: '1.5rem',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 14,
       }}>
         <div style={{
-          padding: '0.8rem 1.25rem',
-          background: 'var(--border-lt)',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', gap: 8,
+          width: 44,
+          height: 44,
+          borderRadius: 'var(--radius-md)',
+          backgroundColor: 'var(--heat-high)',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
         }}>
-          <Zap size={15} color="var(--muted)" />
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            AWS Integration Status
-          </span>
+          <Sun size={24} />
         </div>
-        <div style={{ padding: '1rem 1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-          {[
-            { service: 'API Gateway',  status: 'pending', note: 'Set VITE_API_URL in .env' },
-            { service: 'Lambda',       status: 'pending', note: 'Functions not deployed' },
-            { service: 'DynamoDB',     status: 'pending', note: 'Tables not created' },
-            { service: 'SNS',          status: 'pending', note: 'Notifications not wired' },
-          ].map(({ service, status, note }) => (
-            <div key={service} style={{
-              padding: '0.7rem 0.9rem',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border)',
-              backgroundColor: 'var(--card)',
-              display: 'flex', alignItems: 'flex-start', gap: 8,
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#b91c1c' }}>
+              Official Heat Action Advisory
+            </span>
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: 4,
+              backgroundColor: '#b91c1c',
+              color: '#ffffff',
             }}>
-              <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                backgroundColor: status === 'connected' ? '#52b788' : '#f4a261',
-                marginTop: 5, flexShrink: 0,
-              }} />
-              <div>
-                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)' }}>{service}</div>
-                <div style={{ fontSize: '0.73rem', color: 'var(--muted)' }}>{note}</div>
-              </div>
-            </div>
-          ))}
+              Active
+            </span>
+          </div>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600 }}>
+            {HEAT_RISK_SUMMARY.advisory}
+          </p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>
+            {HEAT_RISK_SUMMARY.disclaimer}
+          </p>
         </div>
       </div>
 
+      {/* ── Map and Heat Scale Layout ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: 16,
+        marginBottom: '1.5rem',
+      }} className="map-grid">
+        <HeatRiskMap waterPoints={waterPoints} />
+        <RiskLegend />
+      </div>
+
+      {/* ── Recent Reports Feed ── */}
+      <section aria-label="Recent Reports" style={{ marginBottom: '2rem' }}>
+        <RecentReports reports={allReports} />
+      </section>
+
       <style>{`
-        @media (max-width: 860px) {
-          section[aria-label="Heat risk map"] { grid-template-columns: 1fr !important; }
-        }
-        @media (max-width: 600px) {
-          section[aria-label="Summary statistics"] > div { flex: 1 1 100% !important; }
+        @media (min-width: 992px) {
+          .map-grid {
+            grid-template-columns: 2fr 1fr !important;
+          }
         }
       `}</style>
     </main>

@@ -7,71 +7,70 @@ const DELHI_CENTER = [28.6139, 77.2090];
 export default function HeatRiskMap({ waterPoints = [] }) {
   return (
     <div style={{
-      backgroundColor: 'var(--card)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)',
+      backgroundColor: 'var(--bg-surface)',
+      border: '1px solid var(--border-color)',
+      borderRadius: 'var(--radius-xl)',
       overflow: 'hidden',
       boxShadow: 'var(--shadow-sm)',
     }}>
-      {/* Map header */}
+      {/* Header bar */}
       <div style={{
-        padding: '0.9rem 1.25rem',
-        borderBottom: '1px solid var(--border)',
+        padding: '1rem 1.25rem',
+        borderBottom: '1px solid var(--border-color)',
         display: 'flex',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        background: 'linear-gradient(to right, var(--border-lt), var(--card))',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 8,
+        backgroundColor: 'var(--bg-surface-subtle)',
       }}>
         <div>
-          <h2 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text)' }}>
-            🗺 Delhi — Heat Risk &amp; Water Access Map
+          <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            Delhi Regional Heat &amp; Water Resource Map
           </h2>
-          <p style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: 1 }}>
-            Click a marker to view details · {waterPoints.length} water points tracked
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Heat risk zones overlaid with community water points
           </p>
         </div>
-        <span style={{
+        <div style={{
+          fontSize: '0.72rem',
+          fontWeight: 700,
           padding: '3px 10px',
           borderRadius: 99,
-          fontSize: '0.68rem',
-          fontWeight: 700,
-          backgroundColor: '#fef3e6',
-          color: '#d4760a',
-          border: '1px solid #f4a26133',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
+          backgroundColor: 'var(--brand-aqua-light)',
+          color: 'var(--brand-aqua-dark)',
+          border: '1px solid var(--brand-aqua)',
         }}>
-          Sample Data
-        </span>
+          {waterPoints.length} Water Points Active
+        </div>
       </div>
 
-      {/* Leaflet map */}
+      {/* Map Container */}
       <MapContainer
         id="heat-risk-map"
         center={DELHI_CENTER}
         zoom={11}
-        style={{ height: 430, width: '100%' }}
+        style={{ height: 420, width: '100%' }}
         scrollWheelZoom={false}
         zoomControl={false}
       >
-        <ZoomControl position="bottomright" />
+        <ZoomControl position="topright" />
 
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Heat risk zone overlays */}
+        {/* Heat risk zone overlays (reserved heat colors) */}
         {SAMPLE_HEAT_ZONES.map((zone) => (
           <Rectangle
             key={zone.id}
             bounds={zone.bounds}
             pathOptions={{
-              color: zone.colour,
+              color: zone.color,
               weight: 1.5,
-              fillColor: zone.colour,
-              fillOpacity: 0.18,
-              dashArray: '4 3',
+              fillColor: zone.color,
+              fillOpacity: 0.2,
             }}
           />
         ))}
@@ -79,29 +78,33 @@ export default function HeatRiskMap({ waterPoints = [] }) {
         <WaterPointMarkers waterPoints={waterPoints} />
       </MapContainer>
 
-      {/* Footer key */}
+      {/* Footer Legend summary */}
       <div style={{
-        padding: '0.65rem 1.25rem',
+        padding: '0.75rem 1.25rem',
+        backgroundColor: 'var(--bg-surface)',
+        borderTop: '1px solid var(--border-color)',
         display: 'flex',
-        gap: 20,
-        flexWrap: 'wrap',
         alignItems: 'center',
-        borderTop: '1px solid var(--border)',
-        background: 'var(--border-lt)',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 10,
+        fontSize: '0.78rem',
       }}>
-        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          Water Points:
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Water Status:</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--status-ok)' }}>
+            ● Operational
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--status-warn)' }}>
+            ● Low Supply
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--status-err)' }}>
+            ● Broken
+          </span>
+        </div>
+        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.72rem' }}>
+          Tap markers to view details
         </span>
-        {[
-          { color: '#52b788', label: 'Operational' },
-          { color: '#f4a261', label: 'Low Supply' },
-          { color: '#c1121f', label: 'Broken' },
-        ].map(({ color, label }) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: 'var(--text-md)' }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 0 2px ${color}40` }} />
-            {label}
-          </div>
-        ))}
       </div>
     </div>
   );

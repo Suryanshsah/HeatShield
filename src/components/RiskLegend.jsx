@@ -1,59 +1,113 @@
-const RISK_LEVELS = [
-  { label: 'Low',      color: '#52b788', bg: '#e8f7ef', description: 'Safe for outdoor activity' },
-  { label: 'Moderate', color: '#f4a261', bg: '#fef3e6', description: 'Hydrate; take breaks' },
-  { label: 'High',     color: '#e76f51', bg: '#fdeee9', description: 'Limit outdoor exposure' },
-  { label: 'Severe',   color: '#c1121f', bg: '#fde8e8', description: 'Avoid outdoor activity' },
+import { AlertOctagon, AlertTriangle, ShieldCheck, Sun } from 'lucide-react';
+
+const HEAT_LEVELS = [
+  {
+    tier: 'Low',
+    label: 'Low Heat Risk',
+    temp: '35°C–37°C',
+    color: 'var(--heat-low)',
+    textColor: '#92400e',
+    bgColor: 'var(--heat-low-bg)',
+    icon: ShieldCheck,
+    advisory: 'Normal hydration. Safe for ordinary outdoor activity.',
+  },
+  {
+    tier: 'Moderate',
+    label: 'Moderate Heat Risk',
+    temp: '38°C–40°C',
+    color: 'var(--heat-moderate)',
+    textColor: '#c2410c',
+    bgColor: 'var(--heat-mod-bg)',
+    icon: Sun,
+    advisory: 'Seek shade during peak afternoon hours. Drink water frequently.',
+  },
+  {
+    tier: 'High',
+    label: 'High Heat Risk',
+    temp: '41°C–43°C',
+    color: 'var(--heat-high)',
+    textColor: '#b91c1c',
+    bgColor: 'var(--heat-high-bg)',
+    icon: AlertTriangle,
+    advisory: 'Limit strenuous outdoor work. High risk of heat illness.',
+  },
+  {
+    tier: 'Severe',
+    label: 'Severe Heat Hazard',
+    temp: '44°C+',
+    color: 'var(--heat-severe)',
+    textColor: '#780000',
+    bgColor: 'var(--heat-sev-bg)',
+    icon: AlertOctagon,
+    advisory: 'Emergency heat precautions required. Avoid direct sunlight.',
+  },
 ];
 
 export default function RiskLegend() {
   return (
     <div style={{
-      backgroundColor: 'var(--card)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-md)',
+      backgroundColor: 'var(--bg-surface)',
+      border: '1px solid var(--border-color)',
+      borderRadius: 'var(--radius-xl)',
+      padding: '1.25rem',
       boxShadow: 'var(--shadow-sm)',
-      overflow: 'hidden',
     }}>
-      <div style={{
-        padding: '0.75rem 1rem',
-        background: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)',
-        color: '#fff',
-      }}>
-        <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-          🌡 Heat Risk Legend
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{
+          fontSize: '0.85rem',
+          fontWeight: 800,
+          color: 'var(--text-main)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <Sun size={16} color="var(--brand-aqua)" />
+          Heat Risk Scale &amp; Guidelines
         </h3>
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+          Color gradient is reserved exclusively for temperature heat hazards.
+        </p>
       </div>
 
-      <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {RISK_LEVELS.map(({ label, color, bg, description }) => (
-          <div key={label} style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '6px 8px',
-            borderRadius: 8,
-            backgroundColor: bg,
-          }}>
-            <div style={{
-              width: 12,
-              height: 12,
-              borderRadius: 3,
-              backgroundColor: color,
-              flexShrink: 0,
-              boxShadow: `0 0 0 2px ${color}30`,
-            }} />
-            <div>
-              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: color }}>{label}</span>
-              <span style={{ fontSize: '0.74rem', color: 'var(--muted)', marginLeft: 5 }}>{description}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {HEAT_LEVELS.map(({ tier, label, temp, color, textColor, bgColor, icon: Icon, advisory }) => (
+          <div
+            key={tier}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: bgColor,
+              borderLeft: `4px solid ${color}`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon size={16} color={textColor} strokeWidth={2.5} />
+                <span style={{ fontWeight: 800, fontSize: '0.88rem', color: textColor }}>
+                  {label}
+                </span>
+              </div>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: textColor,
+                backgroundColor: 'rgba(255,255,255,0.6)',
+                padding: '1px 7px',
+                borderRadius: 4,
+              }}>
+                {temp}
+              </span>
             </div>
+            <p style={{ fontSize: '0.76rem', color: 'var(--text-sub)', marginTop: 2, lineHeight: 1.4 }}>
+              {advisory}
+            </p>
           </div>
         ))}
-      </div>
-
-      <div style={{ padding: '0.5rem 1rem 0.75rem', borderTop: '1px solid var(--border-lt)' }}>
-        <p style={{ fontSize: '0.68rem', color: 'var(--muted-lt)', fontStyle: 'italic', lineHeight: 1.4 }}>
-          Zone colours are sample/illustrative data, not scientifically validated.
-        </p>
       </div>
     </div>
   );

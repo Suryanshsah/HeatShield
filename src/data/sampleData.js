@@ -1,94 +1,118 @@
 /**
- * SAMPLE DATA — For demonstration purposes only.
- * These are NOT real or verified water-point locations or risk scores.
+ * SAMPLE DATA — HeatShield Civic Platform
+ * Clearly identified as illustrative demo data for the Delhi region.
  */
 
 export const SAMPLE_WATER_POINTS = [
-  { id: 'wp-1', name: 'Nehru Place Community Tap', lat: 28.5494, lng: 77.2510, status: 'operational', type: 'Community Tap' },
-  { id: 'wp-2', name: 'Saket Water Kiosk',         lat: 28.5200, lng: 77.2100, status: 'low-supply',   type: 'Water Kiosk' },
-  { id: 'wp-3', name: 'Lajpat Nagar Public Tap',   lat: 28.5700, lng: 77.2400, status: 'broken',       type: 'Public Tap' },
-  { id: 'wp-4', name: 'Connaught Place Fountain',  lat: 28.6315, lng: 77.2167, status: 'operational', type: 'Fountain' },
-  { id: 'wp-5', name: 'Karol Bagh Tanker Point',   lat: 28.6520, lng: 77.1900, status: 'operational', type: 'Tanker Point' },
-  { id: 'wp-6', name: 'Chandni Chowk Water Booth', lat: 28.6560, lng: 77.2310, status: 'low-supply',   type: 'Water Booth' },
-  { id: 'wp-7', name: 'Dwarka Sec-10 Tap',         lat: 28.5730, lng: 77.0550, status: 'operational', type: 'Community Tap' },
-  { id: 'wp-8', name: 'Rohini Sector 3 Kiosk',     lat: 28.7380, lng: 77.0740, status: 'broken',       type: 'Water Kiosk' },
+  { id: 'wp-1', name: 'Nehru Place Community Tap', lat: 28.5494, lng: 77.2510, status: 'operational', type: 'Community Tap', capacity: 'High' },
+  { id: 'wp-2', name: 'Saket Metro Water Kiosk',    lat: 28.5200, lng: 77.2100, status: 'low-supply',   type: 'Water Kiosk',   capacity: 'Medium' },
+  { id: 'wp-3', name: 'Lajpat Nagar Ring Road Tap',lat: 28.5700, lng: 77.2400, status: 'broken',       type: 'Public Tap',    capacity: 'Low' },
+  { id: 'wp-4', name: 'Connaught Place Hub Kiosk', lat: 28.6315, lng: 77.2167, status: 'operational', type: 'Cooling Hub',   capacity: 'Very High' },
+  { id: 'wp-5', name: 'Karol Bagh Tanker Stand',   lat: 28.6520, lng: 77.1900, status: 'operational', type: 'Tanker Point',  capacity: 'High' },
+  { id: 'wp-6', name: 'Chandni Chowk Water Booth', lat: 28.6560, lng: 77.2310, status: 'low-supply',   type: 'Water Booth',   capacity: 'Medium' },
+  { id: 'wp-7', name: 'Dwarka Sec-10 Community Tap',lat: 28.5730, lng: 77.0550, status: 'operational', type: 'Community Tap', capacity: 'High' },
+  { id: 'wp-8', name: 'Rohini Sec-3 Public Tap',    lat: 28.7380, lng: 77.0740, status: 'broken',       type: 'Public Tap',    capacity: 'Low' },
 ];
 
 export const SAMPLE_REPORTS = [
   {
     id: 'rpt-1',
     issueType: 'broken-tap',
-    description: 'Tap at Lajpat Nagar bus stand is completely broken. Water is wasting.',
+    issueLabel: 'Broken Water Tap',
+    description: 'Bus stand water tap snapped off at Lajpat Nagar. Clean water spilling onto pavement continuously.',
     lat: 28.5700, lng: 77.2400,
     status: 'open',
-    timestamp: new Date(Date.now() - 1000 * 60 * 40).toISOString(),
+    statusLabel: 'Action Needed',
+    timestamp: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+    urgency: 'high',
   },
   {
     id: 'rpt-2',
     issueType: 'water-unavailable',
-    description: 'No water supply for last 3 days in Saket block C area.',
+    issueLabel: 'No Water Supply',
+    description: 'Block C public taps have zero pressure since 6:00 AM. 40+ families waiting for tanker.',
     lat: 28.5200, lng: 77.2100,
     status: 'open',
-    timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    statusLabel: 'Action Needed',
+    timestamp: new Date(Date.now() - 1000 * 60 * 110).toISOString(),
+    urgency: 'severe',
   },
   {
     id: 'rpt-3',
     issueType: 'leaking-pipe',
-    description: 'Underground pipe near Rohini Sector 3 is leaking heavily.',
+    issueLabel: 'Pipe Leak / Burst',
+    description: 'Major main line leakage outside Rohini Sec-3 school gate. Road flooding.',
     lat: 28.7380, lng: 77.0740,
-    status: 'open',
-    timestamp: new Date(Date.now() - 1000 * 60 * 200).toISOString(),
+    status: 'acknowledged',
+    statusLabel: 'Dispatched',
+    timestamp: new Date(Date.now() - 1000 * 60 * 190).toISOString(),
+    urgency: 'moderate',
   },
   {
     id: 'rpt-4',
     issueType: 'cooling-unavailable',
-    description: 'Cooling centre at Connaught Place metro exit is shut.',
+    issueLabel: 'Cooling Center Closed',
+    description: 'Public misting shade at Connaught Place gate 2 power breaker tripped.',
     lat: 28.6315, lng: 77.2167,
     status: 'acknowledged',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+    statusLabel: 'Dispatched',
+    timestamp: new Date(Date.now() - 1000 * 60 * 340).toISOString(),
+    urgency: 'moderate',
   },
   {
     id: 'rpt-5',
     issueType: 'broken-tap',
-    description: 'Chandni Chowk water booth handle snapped off.',
+    issueLabel: 'Broken Water Tap',
+    description: 'Chandni Chowk main bazaar drinking station tap valve rusted shut.',
     lat: 28.6560, lng: 77.2310,
     status: 'open',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+    statusLabel: 'Action Needed',
+    timestamp: new Date(Date.now() - 1000 * 60 * 480).toISOString(),
+    urgency: 'low',
   },
 ];
 
-/** Approximate heat-risk zones for Delhi (sample, not scientifically validated) */
 export const SAMPLE_HEAT_ZONES = [
   {
-    id: 'hz-1', name: 'Central Delhi',
-    bounds: [[28.62, 77.17], [28.67, 77.27]],
-    risk: 'severe', colour: '#d62828',
+    id: 'hz-1', name: 'Central Delhi Thermal Corridor',
+    bounds: [[28.61, 77.18], [28.67, 77.26]],
+    risk: 'severe', riskLabel: 'Severe Heat Risk', code: '44°C+',
+    color: 'var(--heat-severe)',
   },
   {
-    id: 'hz-2', name: 'South Delhi',
-    bounds: [[28.50, 77.18], [28.60, 77.28]],
-    risk: 'high', colour: '#e76f51',
+    id: 'hz-2', name: 'South Delhi Urban Heat Island',
+    bounds: [[28.50, 77.18], [28.60, 77.27]],
+    risk: 'high', riskLabel: 'High Heat Risk', code: '41°C–43°C',
+    color: 'var(--heat-high)',
   },
   {
-    id: 'hz-3', name: 'West Delhi',
-    bounds: [[28.60, 77.05], [28.68, 77.15]],
-    risk: 'moderate', colour: '#f4a261',
+    id: 'hz-3', name: 'West Delhi Residential Zone',
+    bounds: [[28.60, 77.05], [28.68, 77.16]],
+    risk: 'moderate', riskLabel: 'Moderate Heat Risk', code: '38°C–40°C',
+    color: 'var(--heat-moderate)',
   },
   {
-    id: 'hz-4', name: 'North-East Delhi',
-    bounds: [[28.68, 77.25], [28.76, 77.35]],
-    risk: 'high', colour: '#e76f51',
+    id: 'hz-4', name: 'North-East Yamuna Basin',
+    bounds: [[28.68, 77.24], [28.76, 77.34]],
+    risk: 'high', riskLabel: 'High Heat Risk', code: '41°C–43°C',
+    color: 'var(--heat-high)',
   },
   {
-    id: 'hz-5', name: 'Dwarka / South-West',
+    id: 'hz-5', name: 'Dwarka Green Buffer Zone',
     bounds: [[28.54, 77.02], [28.61, 77.10]],
-    risk: 'low', colour: '#52b788',
+    risk: 'low', riskLabel: 'Low Heat Risk', code: '35°C–37°C',
+    color: 'var(--heat-low)',
   },
 ];
 
 export const HEAT_RISK_SUMMARY = {
-  level: 'High',       // sample value
-  feelsLike: '42 °C',  // sample value
-  advisory: 'Limit outdoor activity between 11 am – 5 pm. Carry water at all times.',
-  disclaimer: 'This heat-risk data is illustrative sample data and is NOT verified or real-time.',
+  level: 'High',
+  levelCode: 'high',
+  label: 'High Risk (42°C Feels Like)',
+  tempActual: '39°C',
+  tempFeelsLike: '42°C',
+  uvIndex: '10 (Very High)',
+  humidity: '48%',
+  advisory: 'Limit direct outdoor exposure between 11:00 AM – 4:30 PM. Drink water every 20 minutes.',
+  disclaimer: 'Sample data provided for hackathon demonstration. Not real-time meteorological advisories.',
 };
