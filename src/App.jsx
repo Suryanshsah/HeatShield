@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import Footer from './components/Footer';
 import Header from './components/Header';
+import AdminPortal from './components/AdminPortal';
+import CoolingCenterTracker from './components/CoolingCenterTracker';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useLiveWeather } from './hooks/useLiveWeather';
 import { useWaterPoints } from './hooks/useWaterPoints';
@@ -12,7 +14,7 @@ import { getReports } from './services/api';
 import { translations } from './i18n/translations';
 
 export default function App() {
-  // Navigation tab: 'overview' | 'find-relief' | 'report' | 'stay-safe'
+  // Navigation tab: 'overview' | 'find-relief' | 'report' | 'cooling' | 'admin' | 'stay-safe'
   const [activeTab, setActiveTab] = useState('overview');
 
   // i18n Language: 'en' | 'hi'
@@ -139,6 +141,14 @@ export default function App() {
             onBackToMap={() => setActiveTab('find-relief')}
             t={t}
           />
+        )}
+
+        {activeTab === 'cooling' && (
+          <CoolingCenterTracker />
+        )}
+
+        {activeTab === 'admin' && (
+          <AdminPortal />
         )}
 
         {activeTab === 'stay-safe' && (

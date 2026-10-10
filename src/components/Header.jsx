@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Compass, Droplets, Globe, MapPin, Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { ChevronDown, Compass, Droplets, Globe, MapPin, Menu, Moon, Search, ShieldCheck, Sun, ThermometerSnowflake, X } from 'lucide-react';
 import { SAVED_AREAS } from '../hooks/useGeolocation';
 import { translations } from '../i18n/translations';
 
@@ -24,6 +24,8 @@ export default function Header({
     { id: 'overview',   label: t.tabOverview },
     { id: 'find-relief',label: t.tabFindRelief },
     { id: 'report',     label: t.tabReport },
+    { id: 'cooling',    label: lang === 'hi' ? 'शीतल केंद्र व टैंकर' : 'Cooling & Tankers', icon: ThermometerSnowflake },
+    { id: 'admin',      label: lang === 'hi' ? 'प्रशासन पोर्टल' : 'Admin Portal', icon: ShieldCheck },
     { id: 'stay-safe',  label: t.tabStaySafe },
   ];
 
@@ -83,14 +85,17 @@ export default function Header({
                 onClick={() => setActiveTab(tab.id)}
                 style={{
                   position: 'relative',
-                  padding: '12px 16px',
+                  padding: '12px 14px',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  fontSize: '0.92rem',
+                  fontSize: '0.88rem',
                   fontWeight: isActive ? 700 : 500,
                   color: isActive ? 'var(--text-main)' : 'var(--text-muted)',
                   transition: 'color var(--transition-fast)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
                 }}
               >
                 {tab.label}
@@ -98,8 +103,8 @@ export default function Header({
                   <div style={{
                     position: 'absolute',
                     bottom: 0,
-                    left: 12,
-                    right: 12,
+                    left: 10,
+                    right: 10,
                     height: 3,
                     borderRadius: 99,
                     backgroundColor: '#6FD3B8',
