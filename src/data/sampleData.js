@@ -72,6 +72,42 @@ export const SAMPLE_REPORTS = [
   },
 ];
 
+export const COOLING_CENTERS = [
+  {
+    id: 'cc-1',
+    name: 'CP Underground Air-Conditioned Public Hub',
+    address: 'Rajiv Chowk Metro Concourse, CP',
+    lat: 28.6328, lng: 77.2195,
+    timing: '06:00 AM - 10:00 PM',
+    facilities: ['Air Conditioned', 'Free Drinking Water', 'First Aid'],
+    contact: '011-23412000',
+  },
+  {
+    id: 'cc-2',
+    name: 'Lodi Gardens Shaded Pavilion & Hydration Booth',
+    address: 'Lodhi Road, Opp. India International Centre',
+    lat: 28.5931, lng: 77.2197,
+    timing: '24 Hours',
+    facilities: ['Shaded Seating', 'Chilled Water Fountain', 'Misting Fan'],
+    contact: '1800-11-0011',
+  },
+  {
+    id: 'cc-3',
+    name: 'Karol Bagh Community Heat Shelter',
+    address: 'Desh Bandhu Gupta Rd, Karol Bagh',
+    lat: 28.6508, lng: 77.1935,
+    timing: '09:00 AM - 08:00 PM',
+    facilities: ['Cooling Fans', 'ORS & Electrolyte Packets', 'Medical Assistant'],
+    contact: '011-25721122',
+  },
+];
+
+export const TANKER_SCHEDULES = [
+  { id: 'ts-1', zone: 'South Delhi - Sangam Vihar', arrival: '07:30 AM & 04:30 PM', status: 'Scheduled', capacity: '10,000 L' },
+  { id: 'ts-2', zone: 'West Delhi - Dwarka Sector 8 Slum Area', arrival: '08:00 AM & 05:00 PM', status: 'In Transit', capacity: '12,000 L' },
+  { id: 'ts-3', zone: 'North East Delhi - Seelampur', arrival: '09:15 AM & 06:00 PM', status: 'Scheduled', capacity: '8,000 L' },
+];
+
 export const SAMPLE_HEAT_ZONES = [
   {
     id: 'hz-1', name: 'Central Delhi Thermal Corridor',
